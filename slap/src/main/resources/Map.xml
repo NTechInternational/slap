@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <config>
 	<request>
-	   <url>http://localhost:8080/docs/challengeResponse.xml</url>
+	   <url>http://192.168.1.6</url>
+	   <questionPath>/questionresponse.xml</questionPath>
+	   <challengePath>/challengeresponse.xml</challengePath>
 	    <requiredParam>
 	       <param name="source" value="" type="filter"/>
 	       <param name="BusinessModel_ss" value="" type="filter"/>
@@ -13,8 +15,10 @@
 	<response>
 	   <mappings>
 	     <fieldName source="BusinessModel_ss" target="businessModel" />
-	     <fieldName source="xx_ss" target="customer" />
+	     <fieldName source="id" target="id" />
 	     <fieldName source="other" target="tgtname" />
+	     <fieldName source="Template_t" target="resultText" />
+	     <fieldName source="source" target="resultTextID" />
 	  </mappings>
 	</response>
 </config>

@@ -6,27 +6,32 @@ import javax.xml.bind.annotation.XmlRootElement;
 @XmlRootElement
 public class Question {
 
+	@XmlElement(name="questionID")
+	public long id;
+	
 	@XmlElement
-	public long questionID;
-	private HashMap<String,Object> properties = null;
+	public String businessModel;
 	
 	public Question(){
-		this.properties = new HashMap(<String,Object>);
 		
 	}
 	
 	public Question(long questionID){
-		this.questionID = questionID;
-		this.properties = new HashMap(<String,Object>);
-
+		this.id = questionID;
 	}
 	
-	public getProperties(){
-		return properties;
-	}
-	public getPropertyVal(String propertyName){
+	public Question put(String attributeName, String value){
 		
-		if (this.property!=null && this.properties.containsKey(propertyName)))
-			return properties.get(propertyName);
+		if(attributeName.equals("businessModel")){
+			this.businessModel = value;
+		}
+		else if(attributeName.equals("id")){
+			this.id = Long.parseLong(value);
+		}
+		else{
+			System.err.println("Ignoring invalid parameter of type " + attributeName);
+		}
+		
+		return this;
 	}
 }
