@@ -17,14 +17,14 @@ public class Question {
 	
 	public Question(long questionID){
 		this.questionID = questionID;
-		this.properties = new HashMap(<String,Object>);
+		this.properties = new HashMap<String,Object>());
 
 	}
 	
-	public getProperties(){
+	public HashMap<String,Object> getProperties(){
 		return properties;
 	}
-	public getPropertyVal(String propertyName){
+	public Object getPropertyVal(String propertyName){
 		
 		if (this.property!=null && this.properties.containsKey(propertyName)))
 			return properties.get(propertyName);
