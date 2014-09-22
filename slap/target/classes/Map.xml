@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+	<request>
+	   <url>http://localhost:8080/docs/challengeResponse.xml</url>
+	    <requiredParam>
+	       <param name="source" value="" type="filter"/>
+	       <param name="BusinessModel_ss" value="" type="filter"/>
+	    </requiredParam>
+	     <otherParam>
+	        <param name="rows" value="5" type="default" />
+	    </otherParam>
+	</request>
+	<response>
+	   <mappings>
+	     <fieldName source="BusinessModel_ss" target="businessModel" />
+	     <fieldName source="xx_ss" target="customer" />
+	     <fieldName source="other" target="tgtname" />
+	  </mappings>
+	</response>
+</config>
