@@ -27,41 +27,36 @@ public class JsonParser {
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 		try {
-		URI uri = new URI("http://localhost:8080/docs/challengeresponse.xml");
+			URI uri = new URI("http://localhost:8080/docs/challengeresponse.xml");
 
-	    System.out.println("uri.getHost() => " + uri.getHost());
-	    System.out.println("uri.getPath() => " + uri.getPath());
+			System.out.println("uri.getHost() => " + uri.getHost());
+			System.out.println("uri.getPath() => " + uri.getPath());
 
-	    // Most URIs can be converted to true URLs
-	    URL url = uri.toURL();
-	    BufferedReader r = new BufferedReader(
-                new InputStreamReader(url.openStream(), "UTF-8"));
+			// Most URIs can be converted to true URLs
+			URL url = uri.toURL();
+			BufferedReader r = new BufferedReader(
+					new InputStreamReader(url.openStream(), "UTF-8"));
 
-	    JSONParser jsonParser = new JSONParser();
-		JSONObject jsonObject = (JSONObject) jsonParser.parse(r);
+			JSONParser jsonParser = new JSONParser();
+			JSONObject jsonObject = (JSONObject) jsonParser.parse(r);
 
-		// get a String from the JSON object
-		String doc = (String) jsonObject.get("doc");
-		System.out.println("The doc name is: " + doc);
+			// get a String from the JSON object
+			String doc = (String) jsonObject.get("doc");
+			System.out.println("The doc name is: " + doc);
 
-		// get a number from the JSON object
-		long id =  (long) jsonObject.get("id");
-		System.out.println("The id is: " + id);
 
-		
-	} catch (FileNotFoundException ex) {
-		ex.printStackTrace();
-	} catch (IOException ex) {
-		ex.printStackTrace();
-	} catch (ParseException ex) {
-		ex.printStackTrace();
-	} catch (NullPointerException ex) {
-		ex.printStackTrace();
+
+		} catch (FileNotFoundException ex) {
+			ex.printStackTrace();
+		} catch (IOException ex) {
+			ex.printStackTrace();
+		} catch (ParseException ex) {
+			ex.printStackTrace();
+		} catch (NullPointerException ex) {
+			ex.printStackTrace();
+		} catch (java.net.URISyntaxException ex){
+			ex.printStackTrace();
+		}
+
 	}
-		 
-	}
-	
-	 
-
-
 }
