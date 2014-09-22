@@ -2,6 +2,7 @@ package com.ntechinternational.slap;
 
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
+import java.util.HashMap;
 
 @XmlRootElement
 public class Item {
@@ -18,7 +19,7 @@ public class Item {
 	public String resultText;
 	
 	public Item(long questionID){
-		this.questionID = questionID;
+		this.itemID = itemID;
 		this.properties = new HashMap<String,Object>();
 
 	}
@@ -28,7 +29,9 @@ public class Item {
 	}
 	public Object getPropertyVal(String propertyName){
 		
-		if (this.property!=null && this.properties.containsKey(propertyName)))
+		if (this.properties!=null && this.properties.containsKey(propertyName))
 			return properties.get(propertyName);
+		
+		return null;
 	}
 }
