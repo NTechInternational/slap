@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <config>
 	<request>
-	   <url>http://pradhanta.kd.io/challengeResponse.xml</url>
+	   <url>http://localhost:8080/docs/challengeResponse.xml</url>
 	    <requiredParam>
 	       <param name="source" value="" type="filter"/>
 	       <param name="BusinessModel_ss" value="" type="filter"/>
