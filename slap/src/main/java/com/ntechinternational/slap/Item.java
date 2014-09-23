@@ -6,10 +6,8 @@ import javax.xml.bind.annotation.XmlRootElement;
 @XmlRootElement
 public class Item {
 	
-	@XmlElement
-	public long itemID;
-	private HashMap<String,Object> properties = null;
-	
+	@XmlElement(name="itemID")
+	public long id;
 	
 	@XmlElement
 	public String resultTextID;
@@ -17,18 +15,21 @@ public class Item {
 	@XmlElement
 	public String resultText;
 	
-	public Item(long questionID){
-		this.questionID = questionID;
-		this.properties = new HashMap(<String,Object>);
-
-	}
-	
-	public getProperties(){
-		return properties;
-	}
-	public getPropertyVal(String propertyName){
+	public Item put(String attributeName, String value){
+		//TODO: dynamically assign value to an attribute
+		if(attributeName.equals("resultTextID")){
+			this.resultTextID = value;
+		}
+		else if(attributeName.equals("id")){
+			this.id = Long.parseLong(value);
+		}
+		else if(attributeName.equals("resultText")){
+			this.resultText = value;
+		}
+		else{
+			System.err.println("Ignoring invalid parameter of type " + attributeName);
+		}
 		
-		if (this.property!=null && this.properties.containsKey(propertyName)))
-			return properties.get(propertyName);
+		return this;
 	}
 }
