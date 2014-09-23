@@ -8,7 +8,8 @@ import java.util.HashMap;
 public class Question {
 
 	@XmlElement
-	public long questionID;
+	public long id;
+	public String businessModel;
 	private HashMap<String,Object> properties = null;
 	
 	public Question(){
