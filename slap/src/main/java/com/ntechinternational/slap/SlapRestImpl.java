@@ -1,16 +1,19 @@
 package com.ntechinternational.slap;
 
-import java.util.Map;
-
-import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedMap;
+import javax.ws.rs.core.UriInfo;
 
 @Path("/processrequest")
 public class SlapRestImpl {
+	
+	private static final String INVALID_VISITOR_ID_PROVIDED = "Invalid visitor ID provided";
+	private static final String VISITOR_ID = "visitorId";
+	private static final String MAP_FILENAME = "Map.xml";
 	
 	/**
 	 * This is the main web service method that processes all the various request and provides a response
@@ -18,62 +21,66 @@ public class SlapRestImpl {
 	 * @return the string response
 	 */
 	@GET
-	@Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-	public SlapResponse processRequest(
-			  @DefaultValue("-1") @QueryParam("visitorId") long visitorId
-			, @DefaultValue("") @QueryParam("questionResponse") String questionResponse
-			, @DefaultValue("") @QueryParam("itemIds") String itemIds){
+	@Produces({MediaType.APPLICATION_JSON})
+	public SlapResponse processRequest(@Context UriInfo uriInfo){
 		
-		SlapResponse processedResponse = null;
+		SlapResponse processedResponse = new SlapResponse();;
 		
 		//if valid visitor id has been provided
 		//TODO: check if the test is valid, and meets the requirements
-		if(visitorId > 0){
+		MultivaluedMap<String, String> queryParams = uriInfo.getQueryParameters(); 
+		long visitorId = -1; //default null value
+		try{
+			visitorId = Long.parseLong(queryParams.getFirst(VISITOR_ID));
+			processedResponse.visitorId = visitorId;
 			
-			//Step 1: CheckTokenId : gets the valid token id for the visitor id
-			Token token = new TokenValidator().checkTokenId(visitorId);
-			System.out.println(token);
-			
-			if(!questionResponse.equals("")){
-				processedResponse = processQuestionRequest(visitorId, questionResponse);
-			}
-			else if(!itemIds.equals("")){
-				processedResponse = processItemRequest(visitorId, itemIds);
+			if(visitorId > 0){
+				processedResponse = processRequest(visitorId, queryParams);
 			}
 			else{
-				processedResponse = processGeneralRequest(visitorId);
+				processedResponse.errorDescription = INVALID_VISITOR_ID_PROVIDED;
 			}
+		}
+		catch(NumberFormatException ex){
+			processedResponse.visitorId = 0;
+			processedResponse.errorDescription = INVALID_VISITOR_ID_PROVIDED;
+		}
+		catch(Exception ex){
+			System.err.println("An exception was occurred " + ex + " on " + ex.getStackTrace());
+			processedResponse.errorDescription = ex.getMessage();
 		}
 		
 		return processedResponse;
 		
+		
+	}
+
+	private SlapResponse processRequest(long visitorId,
+		MultivaluedMap<String, String> queryParams) throws Exception {
+		SlapResponse response = new SlapResponse();
+		
+		//Step 1: Validate the token
+		@SuppressWarnings("unused")
+		Token token = new TokenValidator().checkTokenId(visitorId);
+		
+		//Step 2: Load the configuration information from the map.xml file
+		ConfigurationMap configDetails = ConfigurationMap.getConfig(MAP_FILENAME);
+		
+		//Step 3: Prepare Server Query and fetch response from server
+		//TODO: parallelize question and challenge response
+		String questionResponse = new QueryManager().query(visitorId, queryParams, configDetails, "/questionresponse-1.xml");
+		
+		String challengeResponse = new QueryManager().query(visitorId, queryParams, configDetails, "/challengeresponse-1.xml");
+		
+		//Step 4: Merge the response and return the response
+		
+		response.questions = XmlParser.transformDoc(questionResponse, configDetails.backendDocNode, configDetails.responseMappings);
+		response.items = XmlParser.transformDoc(challengeResponse, configDetails.backendDocNode, configDetails.responseMappings);
+		response.visitorId = visitorId;
+		
+		return response;
 	}
 
 	
-	/**
-	 * This class processes query request where visitorId is provide
-	 * @param visitorId
-	 */
-	private SlapResponse processGeneralRequest(long visitorId){
-		
-		return SlapResponse.createResponse();
-	}
 	
-	
-	private SlapResponse processQuestionRequest(long visitorId, String questionResponse){
-		
-		//split question response into name value pairs
-		//example: questionResponse=sell:p101#client:c301
-		Map<String, String> questionNVP = new Parser().getNameValuePairs(questionResponse);
-		System.out.println(questionNVP);
-		
-		return SlapResponse.createResponse();
-	}
-	
-	private SlapResponse processItemRequest(long visitorId, String itemIds){
-		
-		
-		
-		return SlapResponse.createResponse();
-	}
 }
