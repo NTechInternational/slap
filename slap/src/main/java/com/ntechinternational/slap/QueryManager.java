@@ -61,7 +61,7 @@ public class QueryManager {
 					target = target.queryParam(requestParam.paramName, queryParams.getFirst(clientParamName));
 				}
 			}
-			else if(requestParam.paramType.equals(TYPE_DEFAULT) && requestParam.paramValue != null){
+			else if(requestParam.paramType != null && requestParam.paramType.equals(TYPE_DEFAULT) && requestParam.paramValue != null){
 				//in case the client param is missing and the current param is of type default use the default value
 				target = target.queryParam(requestParam.paramName, requestParam.paramValue);
 			}

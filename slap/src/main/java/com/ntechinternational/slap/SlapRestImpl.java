@@ -46,6 +46,7 @@ public class SlapRestImpl {
 			processedResponse.errorDescription = INVALID_VISITOR_ID_PROVIDED;
 		}
 		catch(Exception ex){
+			System.err.println("An exception was occurred " + ex + " on " + ex.getStackTrace());
 			processedResponse.errorDescription = ex.getMessage();
 		}
 		
