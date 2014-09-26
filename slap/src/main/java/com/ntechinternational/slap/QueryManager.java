@@ -1,5 +1,8 @@
 package com.ntechinternational.slap;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.WebTarget;
@@ -9,6 +12,8 @@ import javax.ws.rs.core.Response;
 
 public class QueryManager {
 	
+	private static final String FILTER_QUERY_SEPARATOR = ":";
+	private static final String FILTER_QUERY_NAME = "fq";
 	public static final String TYPE_FILTER = "filter";
 	public static final String TYPE_DEFAULT = "default";
 	private static final String DEFAULT_MEDIATYPE = MediaType.APPLICATION_XML;
@@ -35,7 +40,7 @@ public class QueryManager {
 		for(int index = 0; index < config.requestParams.size(); index++){
 			ConfigurationMap.RequestParam requestParam = config.requestParams.get(index);
 			
-			System.out.println("In the loop" + requestParam.paramName);
+			System.out.println("In the loop " + requestParam.paramName + " with default value " + requestParam.paramValue);
 			
 			//Lets map the JavaScript parameter to name to backend server param name as defined in the mapping
 			//if necessary
@@ -44,6 +49,8 @@ public class QueryManager {
 				//if a mapping is found then replace the param name
 				clientParamName = config.responseMappings.get(clientParamName);
 			}
+			
+			List<String> valueToPass = null;
 			
 			//if the query parameter doesn't contain a required parameter, an exception is generated
 			if(queryParams.containsKey(clientParamName) == false && requestParam.isRequired){
@@ -54,16 +61,27 @@ public class QueryManager {
 			
 			if(queryParams.containsKey(clientParamName)){
 				//this is the request param name that has to be sent
-				if(queryParams.get(clientParamName).size() > 1){
-					target = target.queryParam(requestParam.paramName, queryParams.get(clientParamName));
-				}
-				else{
-					target = target.queryParam(requestParam.paramName, queryParams.getFirst(clientParamName));
-				}
+				valueToPass = queryParams.get(clientParamName);
 			}
 			else if(requestParam.paramType != null && requestParam.paramType.equals(TYPE_DEFAULT) && requestParam.paramValue != null){
 				//in case the client param is missing and the current param is of type default use the default value
-				target = target.queryParam(requestParam.paramName, requestParam.paramValue);
+				valueToPass = new ArrayList<String>();
+				valueToPass.add(requestParam.paramValue);
+			}
+			
+			//if we have some to send
+			if(valueToPass != null){
+				if(requestParam.paramType != null && requestParam.paramType.equals(TYPE_FILTER)){
+					//if it is filter than pass as fq param:value
+					for(String val : valueToPass){
+						target = target.queryParam(FILTER_QUERY_NAME, requestParam.paramName + FILTER_QUERY_SEPARATOR + val);
+					}
+				}
+				else{
+					for(String val : valueToPass) {
+						target = target.queryParam(requestParam.paramName, val);
+					}
+				}
 			}
 		}
 		
