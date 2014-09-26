@@ -1,24 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <config>
 	<request>
-	   <url>http://192.168.1.6</url>
-	   <questionPath>/questionresponse.xml</questionPath>
-	   <challengePath>/challengeresponse.xml</challengePath>
+	   <url>http://localhost:8000</url>
+	   <!--  questionPath>/questionresponse-1.xml</questionPath>
+	   <challengePath>/challengeresponse-1.xml</challengePath -->
 	    <requiredParam>
-	       <param name="source" value="" type="filter"/>
-	       <param name="BusinessModel_ss" value="" type="filter"/>
+	       <param name="source" value="" type="filter"/> <!--  &fq=source:questions/challenge -->
+	       <param name="BusinessModel_ss" value="" type="filter"/> 
 	    </requiredParam>
 	     <otherParam>
+	     	<param name="wt" value="json"/>
 	        <param name="rows" value="5" type="default" />
 	    </otherParam>
 	</request>
 	<response>
+	    <documentNode>/response/result/doc</documentNode>
 	   <mappings>
 	     <fieldName source="BusinessModel_ss" target="businessModel" />
 	     <fieldName source="id" target="id" />
-	     <fieldName source="other" target="tgtname" />
-	     <fieldName source="Template_t" target="resultText" />
-	     <fieldName source="source" target="resultTextID" />
+	     <fieldName source="source" target="sourcetype" /> <!-- values would be questions/item note:item is same as challenge-->
+	     <fieldName source="question_t" target="question" />
+	     <fieldName source="priority_i" target="priority" />
+	     <fieldName source="Group_i" target="group" />
+	     <fieldName source="type_s" target="type" />
+	     <fieldName source="answers_t" target="answers" />
+	     <fieldName source="Template_t" target="itemtemplate" />
+	     <fieldName source="Variables_s" target="variables" />
+	     <fieldName source="Template_t" target="itemtemplate" />
+	     <fieldName source="RewardType_ss" target="rewardtype" />
 	  </mappings>
 	</response>
+	
 </config>
