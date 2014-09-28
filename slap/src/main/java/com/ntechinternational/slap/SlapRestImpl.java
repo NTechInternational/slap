@@ -5,12 +5,14 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.UriInfo;
 
 @Path("/processrequest")
 public class SlapRestImpl {
 	
+	private static final String SOURCE_PARAM = "sourcetype";
 	private static final String INVALID_VISITOR_ID_PROVIDED = "Invalid visitor ID provided";
 	private static final String VISITOR_ID = "visitorId";
 	private static final String MAP_FILENAME = "Map.xml";
@@ -64,12 +66,22 @@ public class SlapRestImpl {
 		Token token = new TokenValidator().checkTokenId(visitorId);
 		
 		//Step 2: Load the configuration information from the map.xml file
-		ConfigurationMap configDetails = ConfigurationMap.getConfig(MAP_FILENAME);
+		String mapXMLFile = System.getenv("SLAP_MAP_XML_FILE");
+		mapXMLFile = mapXMLFile == null || mapXMLFile.isEmpty() ? MAP_FILENAME : mapXMLFile;
+		
+		System.out.println("Loading configuration from " + mapXMLFile);
+		ConfigurationMap configDetails = ConfigurationMap.getConfig(mapXMLFile);
 		
 		//Step 3: Prepare Server Query and fetch response from server
 		//TODO: parallelize question and challenge response
-		String questionResponse = new QueryManager().query(visitorId, queryParams, configDetails, "/questionresponse-1.xml");
+		MultivaluedMap<String, String> questionParams = new MultivaluedHashMap<String, String>();
+		questionParams.putAll(queryParams);
+		questionParams.putSingle(SOURCE_PARAM, "questions");
+		String questionResponse = new QueryManager().query(visitorId, questionParams, configDetails, "/questionresponse-1.xml");
 		
+		MultivaluedMap<String, String> challengeParams = new MultivaluedHashMap<String, String>();
+		challengeParams.putAll(queryParams);
+		challengeParams.putSingle(SOURCE_PARAM, "challenge");
 		String challengeResponse = new QueryManager().query(visitorId, queryParams, configDetails, "/challengeresponse-1.xml");
 		
 		//Step 4: Merge the response and return the response
