@@ -25,7 +25,7 @@ public class XmlParser {
 	 * This method transforms all nodes identified by documentNode in the XML string and returns a list of
 	 * hash map object
 	 */
-	public static List<Map<String, Object>> transformDoc(String xmlString, String documentNode, Map<String, String> mappingDefinition){
+	public static List<Map<String, Object>> transformDoc(String xmlString, String documentNode, Map<String, String> mappingDefinition, String condition){
 		
 		List<Map<String, Object>> objects = new ArrayList<Map<String, Object>>();
 		
@@ -43,7 +43,7 @@ public class XmlParser {
 		    System.out.println("Number of document nodes found: " + docNodes.getLength());
 		    
 		    for(int index = 0; index < docNodes.getLength(); index++ ){
-		    	Map<String, Object> mappedObject = transformNodeToMap(docNodes.item(index),mappingDefinition);
+		    	Map<String, Object> mappedObject = transformNodeToMap(docNodes.item(index),mappingDefinition, condition);
 		    	if(mappedObject != null){
 		    		objects.add(mappedObject);
 		    	}
@@ -62,7 +62,7 @@ public class XmlParser {
 	/**
 	 * transforms a node to hash map
 	 */
-	private static Map<String, Object> transformNodeToMap(Node nodeToMap,Map<String, String> mappingDefinition){
+	private static Map<String, Object> transformNodeToMap(Node nodeToMap,Map<String, String> mappingDefinition, String condition){
 		Map<String, Object> mappedObject = new HashMap<String, Object>();
 		NodeList childNodes = nodeToMap.getChildNodes();
 		for(int index = 0; index < childNodes.getLength(); index++ ){
@@ -77,7 +77,10 @@ public class XmlParser {
 					
 					if(mappingDefinition.containsKey(nodeName)){
 						String transformedNodeName = mappingDefinition.get(nodeName);
-						mappedObject.put(transformedNodeName, childNode.getTextContent());
+						//check for source
+						//String[] eval = condition.split("|");
+						//if (nodeName.equalsIgnoreCase(eval[0]) && childNode.getTextContent().equalsIgnoreCase(eval[1])) 
+							mappedObject.put(transformedNodeName, childNode.getTextContent());
 						//TODO: All nodes are considered as strings, we will need to do proper type casting based on nodes
 					}
 				}

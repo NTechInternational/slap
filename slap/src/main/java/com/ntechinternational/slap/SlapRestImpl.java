@@ -68,14 +68,14 @@ public class SlapRestImpl {
 		
 		//Step 3: Prepare Server Query and fetch response from server
 		//TODO: parallelize question and challenge response
-		String questionResponse = new QueryManager().query(visitorId, queryParams, configDetails, "/questionresponse-1.xml");
+		String questionResponse = new QueryManager().query(visitorId, queryParams, configDetails, "/solr/collection1/questions");
 		
-		String challengeResponse = new QueryManager().query(visitorId, queryParams, configDetails, "/challengeresponse-1.xml");
+		String challengeResponse = new QueryManager().query(visitorId, queryParams, configDetails, "solr/collection1/items");
 		
 		//Step 4: Merge the response and return the response
 		
-		response.questions = XmlParser.transformDoc(questionResponse, configDetails.backendDocNode, configDetails.responseMappings);
-		response.items = XmlParser.transformDoc(challengeResponse, configDetails.backendDocNode, configDetails.responseMappings);
+		response.questions = XmlParser.transformDoc(questionResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|questions");
+		response.items = XmlParser.transformDoc(challengeResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|challenge");
 		response.visitorId = visitorId;
 		
 		return response;
