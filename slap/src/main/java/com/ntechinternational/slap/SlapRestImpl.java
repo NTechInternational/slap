@@ -77,17 +77,18 @@ public class SlapRestImpl {
 		MultivaluedMap<String, String> questionParams = new MultivaluedHashMap<String, String>();
 		questionParams.putAll(queryParams);
 		questionParams.putSingle(SOURCE_PARAM, "questions");
-		String questionResponse = new QueryManager().query(visitorId, questionParams, configDetails, "/questionresponse-1.xml");
+		String questionResponse = new QueryManager().query(visitorId, questionParams, configDetails, "/solr/collection1/questions");
 		
 		MultivaluedMap<String, String> challengeParams = new MultivaluedHashMap<String, String>();
 		challengeParams.putAll(queryParams);
 		challengeParams.putSingle(SOURCE_PARAM, "challenge");
-		String challengeResponse = new QueryManager().query(visitorId, queryParams, configDetails, "/challengeresponse-1.xml");
-		
+		String challengeResponse = new QueryManager().query(visitorId, queryParams, configDetails, "solr/collection1/items");
+
+
 		//Step 4: Merge the response and return the response
 		
-		response.questions = XmlParser.transformDoc(questionResponse, configDetails.backendDocNode, configDetails.responseMappings);
-		response.items = XmlParser.transformDoc(challengeResponse, configDetails.backendDocNode, configDetails.responseMappings);
+		response.questions = XmlParser.transformDoc(questionResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|questions");
+		response.items = XmlParser.transformDoc(challengeResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|challenge");
 		response.visitorId = visitorId;
 		
 		return response;

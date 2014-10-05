@@ -84,7 +84,8 @@ public class QueryManager {
 				}
 			}
 		}
-		
+		//includes all the results
+		target = target.queryParam("q", "*:*");
 		System.out.println("Querying " + target.getUri());
 		
 		Response response = target.request(DEFAULT_MEDIATYPE).get(); //set the accepted media type to one defined
