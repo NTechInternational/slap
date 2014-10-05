@@ -12,10 +12,12 @@ import javax.ws.rs.core.UriInfo;
 @Path("/processrequest")
 public class SlapRestImpl {
 	
+	private static final String API_VERSION_PARAM = "apiversion";
 	private static final String SOURCE_PARAM = "sourcetype";
 	private static final String INVALID_VISITOR_ID_PROVIDED = "Invalid visitor ID provided";
 	private static final String VISITOR_ID = "visitorId";
 	private static final String MAP_FILENAME = "Map.xml";
+	private static final String UNSUPPORTED_API_VERSION = "API Version unsupported, please provide correct apiversion parameter";
 	
 	/**
 	 * This is the main web service method that processes all the various request and provides a response
@@ -32,15 +34,28 @@ public class SlapRestImpl {
 		//TODO: check if the test is valid, and meets the requirements
 		MultivaluedMap<String, String> queryParams = uriInfo.getQueryParameters(); 
 		long visitorId = -1; //default null value
+		int apiVersion = 0;
 		try{
 			visitorId = Long.parseLong(queryParams.getFirst(VISITOR_ID));
 			processedResponse.visitorId = visitorId;
 			
-			if(visitorId > 0){
-				processedResponse = processRequest(visitorId, queryParams);
+			//check the api version number is supported
+			try{
+				apiVersion = Integer.parseInt(queryParams.getFirst(API_VERSION_PARAM));
+				if(apiVersion == 1){
+					if(visitorId > 0){
+						processedResponse = processRequest(visitorId, queryParams);
+					}
+					else{
+						processedResponse.errorDescription = INVALID_VISITOR_ID_PROVIDED;
+					}
+				}
+				else{
+					processedResponse.errorDescription = UNSUPPORTED_API_VERSION; 
+				}
 			}
-			else{
-				processedResponse.errorDescription = INVALID_VISITOR_ID_PROVIDED;
+			catch(NumberFormatException invalidVersion){
+				processedResponse.errorDescription = UNSUPPORTED_API_VERSION; 
 			}
 		}
 		catch(NumberFormatException ex){
