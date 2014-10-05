@@ -63,7 +63,7 @@ public class SlapRestImpl {
 		
 		//Step 1: Validate the token
 		@SuppressWarnings("unused")
-		Token token = new TokenValidator().checkTokenId(visitorId);
+		Token token = new TokenValidator().checkTokenId(visitorId, queryParams);
 		
 		//Step 2: Load the configuration information from the map.xml file
 		String mapXMLFile = System.getenv("SLAP_MAP_XML_FILE");
@@ -77,12 +77,12 @@ public class SlapRestImpl {
 		MultivaluedMap<String, String> questionParams = new MultivaluedHashMap<String, String>();
 		questionParams.putAll(queryParams);
 		questionParams.putSingle(SOURCE_PARAM, "questions");
-		String questionResponse = new QueryManager().query(visitorId, questionParams, configDetails, "/solr/collection1/questions");
+		String questionResponse = new QueryManager().query(visitorId, questionParams, configDetails, "/questionresponse-1.xml");
 		
 		MultivaluedMap<String, String> challengeParams = new MultivaluedHashMap<String, String>();
 		challengeParams.putAll(queryParams);
 		challengeParams.putSingle(SOURCE_PARAM, "challenge");
-		String challengeResponse = new QueryManager().query(visitorId, queryParams, configDetails, "solr/collection1/items");
+		String challengeResponse = new QueryManager().query(visitorId, queryParams, configDetails, "/challengeresponse-1.xml");
 
 
 		//Step 4: Merge the response and return the response
