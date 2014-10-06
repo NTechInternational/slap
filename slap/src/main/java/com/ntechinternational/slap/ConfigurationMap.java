@@ -54,11 +54,11 @@ public class ConfigurationMap {
 	//TODO: to change to singleton pattern
 	private static ConfigurationMap singletonMap = null;
 	
-	public static synchronized ConfigurationMap getConfig(String mapFileName){
+	public static synchronized ConfigurationMap getConfig(String mapFileName) throws ConfigurationException{
 		if(singletonMap == null){
 			singletonMap = new ConfigurationMap();
 			
-			try{
+			try{ 
 				XMLConfiguration config = new XMLConfiguration(mapFileName); //load the configuration file
 				
 				singletonMap.requestURL = config.getString("request.url");
@@ -77,7 +77,7 @@ public class ConfigurationMap {
 				}
 			}
 			catch(ConfigurationException ex){
-				
+				throw ex;
 			}
 		}
 		return singletonMap;
