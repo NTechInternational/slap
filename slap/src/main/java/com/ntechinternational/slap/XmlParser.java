@@ -24,6 +24,10 @@ public class XmlParser {
 	/**
 	 * This method transforms all nodes identified by documentNode in the XML string and returns a list of
 	 * hash map object
+	 * @param xmlString the actual XML document (complete)
+	 * @param documentNode the nodes that represent the document to be extracted
+	 * @param mappingDefinition the param transformation map i.e. change xmlString node name from one to another
+	 * @param condition 
 	 */
 	public static List<Map<String, Object>> transformDoc(String xmlString, String documentNode, Map<String, String> mappingDefinition, String condition){
 		

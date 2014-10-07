@@ -1,15 +1,19 @@
 package com.ntechinternational.slap;
 
+import java.net.UnknownHostException;
+import java.util.Map;
+
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.UriInfo;
 
-@Path("/processrequest")
+@Path("/rest")
 public class SlapRestImpl {
 	
 	private static final String API_VERSION_PARAM = "apiversion";
@@ -26,6 +30,7 @@ public class SlapRestImpl {
 	 */
 	@GET
 	@Produces({MediaType.APPLICATION_JSON})
+	@Path("processrequest")
 	public SlapResponse processRequest(@Context UriInfo uriInfo){
 		
 		SlapResponse processedResponse = new SlapResponse();;
@@ -77,7 +82,6 @@ public class SlapRestImpl {
 		SlapResponse response = new SlapResponse();
 		
 		//Step 1: Validate the token
-		@SuppressWarnings("unused")
 		Token token = new TokenValidator().checkTokenId(visitorId, queryParams);
 		
 		//Step 2: Load the configuration information from the map.xml file
@@ -109,6 +113,26 @@ public class SlapRestImpl {
 		return response;
 	}
 
-	
+	@GET
+	@Path("getvisitorid")
+	@Produces({MediaType.APPLICATION_JSON})
+	public Visitor getVisitorId(@QueryParam(value = "userid") String userId){
+		Visitor visitor = new Visitor();
+		if(userId != null && !userId.isEmpty()){
+			try {
+				visitor = Visitor.getVisitorFor(userId);
+				if(visitor == null){
+					visitor = Visitor.createVisitorFor(userId);
+				}
+			} catch (UnknownHostException e) {
+				visitor.errorDescription = "Error occurred while connecting to the server";
+			}
+		}
+		else{
+			visitor.errorDescription = "Please provide a valid user id";
+		}
+		
+		return visitor;
+	}
 	
 }
