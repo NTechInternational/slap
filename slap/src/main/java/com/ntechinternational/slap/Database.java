@@ -10,7 +10,8 @@ import com.mongodb.MongoClient;
 public class Database {
 	private static final String MONGO_DB_NAME = "slap";
 	public static final String MONGO_VISITOR_COLLECTION_NAME = "visitors";
-	static MongoClient _mongoClient = null;
+	public static final String MONGO_QUESTION_COLLECTION_NAME = "questions";
+	static volatile MongoClient _mongoClient = null;
 	
 
 	/**
@@ -18,18 +19,27 @@ public class Database {
 	 * Since mongoclient  has 
 	 * @throws UnknownHostException
 	 */
-	private synchronized static void initialize() throws UnknownHostException{
+	private static void initialize() throws UnknownHostException{
 		if(_mongoClient == null){
-			//TODO: get the mongo server name and port from config file
-			_mongoClient = new MongoClient();
-			DB slapDB = _mongoClient.getDB(MONGO_DB_NAME);
-			
-			DBCollection collection = slapDB.getCollection(MONGO_VISITOR_COLLECTION_NAME);
-			//ensures that visitorId is unique
-			BasicDBObject indexObj = new BasicDBObject("visitorId", 1);
-			BasicDBObject uniqueIndex = new BasicDBObject("unique", true);
-			
-			collection.createIndex(indexObj, uniqueIndex);
+			synchronized(MongoClient.class){
+				if(_mongoClient == null){
+					//TODO: get the mongo server name and port from config file
+					_mongoClient = new MongoClient();
+					DB slapDB = _mongoClient.getDB(MONGO_DB_NAME);
+					
+					DBCollection collection = slapDB.getCollection(MONGO_VISITOR_COLLECTION_NAME);
+					//ensures that visitorId is unique
+					BasicDBObject indexObj = new BasicDBObject("visitorId", 1);
+					BasicDBObject uniqueIndex = new BasicDBObject("unique", true);
+					
+					collection.createIndex(indexObj, uniqueIndex);
+					
+					//create question collection
+					collection = slapDB.getCollection(MONGO_QUESTION_COLLECTION_NAME);
+					collection.createIndex(indexObj, uniqueIndex);
+					
+				}
+			}
 		}
 		
 	}

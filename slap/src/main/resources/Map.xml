@@ -2,8 +2,8 @@
 <config>
 	<request>
 	   <url>http://localhost:8000</url>
-	   <!--  questionPath>/questionresponse-1.xml</questionPath>
-	   <challengePath>/challengeresponse-1.xml</challengePath -->
+	   <questionPath>/questionresponse-1.xml</questionPath>
+	   <challengePath>/challengeresponse-1.xml</challengePath>
 	    <requiredParam>
 	       <!--param name="source" value="" type="filter"/--> <!--  &fq=source:questions/challenge -->
 	       <param name="BusinessModel_ss" value="" type="filter"/> 

@@ -14,6 +14,9 @@ import org.apache.commons.configuration.XMLConfiguration;
 public class ConfigurationMap {
 	public String requestURL;
 	public String backendDocNode;
+	public String questionPath;
+	public String challengePath;
+	
 	public List<RequestParam> requestParams;
 	/**
 	 * maps the backend response's variable name to server's/incoming request's variable name
@@ -62,6 +65,12 @@ public class ConfigurationMap {
 				XMLConfiguration config = new XMLConfiguration(mapFileName); //load the configuration file
 				
 				singletonMap.requestURL = config.getString("request.url");
+				singletonMap.questionPath = config.getString("request.questionPath");
+				
+				System.out.println(config.getString("request.questionpath"));
+				singletonMap.challengePath = config.getString("request.challengePath");
+				
+				System.out.println(config.getString("request.challengepath"));
 				
 				//get all the param required for request
 				readRequestParam(config.configurationsAt("request.requiredParam.param"), true);
