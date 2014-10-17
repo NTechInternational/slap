@@ -54,9 +54,11 @@ public class QueryManager {
 			
 			//if the query parameter doesn't contain a required parameter, an exception is generated
 			if(queryParams.containsKey(clientParamName) == false && requestParam.isRequired){
-				System.err.println("Exception thrown required param not found");
-				throw new Exception("Missing required parameter: " + clientParamName);
+				//System.err.println("Exception thrown required param not found");
+				//throw new Exception("Missing required parameter: " + clientParamName);
 				//TODO: we might need to package the exception better and give a JSON exception
+				valueToPass = new ArrayList<String>();
+				valueToPass.add(requestParam.paramValue);
 			}
 			
 			if(queryParams.containsKey(clientParamName)){

@@ -1,7 +1,10 @@
 package com.ntechinternational.slap;
 
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -12,6 +15,11 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.UriInfo;
+
+import com.mongodb.BasicDBList;
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBCursor;
+import com.mongodb.DBObject;
 
 @Path("/rest")
 public class SlapRestImpl {
@@ -25,6 +33,8 @@ public class SlapRestImpl {
 	private static final String MAP_FILENAME = "Map.xml";
 	private static final String UNSUPPORTED_API_VERSION = "API Version unsupported, please provide correct apiversion parameter";
 	private static final Object TYPE_SELECT = "select";
+	
+	private long visitorId = 0;
 	
 	/**
 	 * This is the main web service method that processes all the various request and provides a response
@@ -46,6 +56,7 @@ public class SlapRestImpl {
 		try{
 			visitorId = Long.parseLong(queryParams.getFirst(VISITOR_ID));
 			processedResponse.visitorId = visitorId;
+			this.visitorId = visitorId;
 			
 			//check the api version number is supported
 			try{
@@ -57,7 +68,7 @@ public class SlapRestImpl {
 			
 			if(apiVersion == 1){
 				if(visitorId > 0){
-					processedResponse = processRequest(visitorId, queryParams);
+					processedResponse = processRequest(queryParams);
 				}
 				else{
 					processedResponse.errorDescription = INVALID_VISITOR_ID_PROVIDED;
@@ -72,7 +83,8 @@ public class SlapRestImpl {
 			processedResponse.errorDescription = INVALID_VISITOR_ID_PROVIDED;
 		}
 		catch(Exception ex){
-			System.err.println("An exception was occurred " + ex + " on " + ex.getStackTrace());
+			System.err.println("An exception was occurred " + ex + " on ");
+			ex.printStackTrace(System.err);
 			processedResponse.errorDescription = ex.getMessage();
 		}
 		
@@ -81,12 +93,22 @@ public class SlapRestImpl {
 		
 	}
 
-	private SlapResponse processRequest(long visitorId,
+	private SlapResponse processRequest(
 		MultivaluedMap<String, String> queryParams) throws Exception {
 		SlapResponse response = new SlapResponse();
 		response.visitorId = visitorId;
 		
-		//Step 1: Validate the visitor ID has existing token Id
+		//Step 1: Load the configuration information from the map.xml file
+		String mapXMLFile = System.getenv("SLAP_MAP_XML_FILE");
+		mapXMLFile = mapXMLFile == null || mapXMLFile.isEmpty() ? MAP_FILENAME : mapXMLFile;
+		
+		System.out.println("Loading configuration from " + mapXMLFile);
+		ConfigurationMap configDetails = ConfigurationMap.getConfig(mapXMLFile);
+		System.out.println("Connecting to " + configDetails.mongoAddress + " @ " + configDetails.mongoPort);
+		Database.initializeMongoAddress(configDetails.mongoAddress, configDetails.mongoPort);
+
+		
+		//Step 2: Validate the visitor ID has existing token Id
 		Visitor visitor = Visitor.getUserWithVisitorId(visitorId);
 		if(visitor == null){
 			response.errorDescription = "Unknown visitor Id";
@@ -95,6 +117,7 @@ public class SlapRestImpl {
 		
 		/*Step 2: Based on the various submission perform actions
 		  the various interactions could be
+		   &qid=2001&label=customer name&value=customer&qtype=variable&..&visitorId=123&type=submit
 		  "submit" => User answers/submits response to question [Interaction 1]
 		  "select" => User selects a challenge					[Interaction 2]
 		  "done" => User session Done							[Interaction 3]
@@ -108,43 +131,54 @@ public class SlapRestImpl {
 			if(typeValue.equals(TYPE_SUBMIT)){
 				//INTERACTION 1
 				System.out.println("Received submit query");
-				storeQuestionSubmission(visitorId, queryParams);
+				String questionId = queryParams.getFirst("qid");
+				return storeQuestionSubmission(questionId, queryParams);
+				
 			}
 			else if(typeValue.equals(TYPE_SELECT)){
 				//INTERACTION 2
 			}
+
+		}
+		else{
+			//Step 3: Prepare Server Query and fetch response from server
+			//TODO: parallelize question and challenge response
+			MultivaluedMap<String, String> questionParams = new MultivaluedHashMap<String, String>();
+			questionParams.putAll(queryParams);
+			questionParams.putSingle(SOURCE_PARAM, "questions");
+			String questionResponse = new QueryManager().query(visitorId, questionParams, configDetails, configDetails.questionPath);
+			
+			
+			
+			MultivaluedMap<String, String> challengeParams = new MultivaluedHashMap<String, String>();
+			challengeParams.putAll(queryParams);
+			challengeParams.putSingle(SOURCE_PARAM, "challenge");
+			String challengeResponse = new QueryManager().query(visitorId, queryParams, configDetails, configDetails.challengePath );
+
+
+			//Step 4: Merge the response and return the response
+			
+			List<Map<String, Object>> questions = XmlParser.transformDoc(questionResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|questions"); 
+			int index = 0;
+			
+			//always return a single question on the top of the list by default
+			response.questions = questions.subList(index, 1);
+			response.items = XmlParser.transformDoc(challengeResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|challenge");
+			response.visitorId = visitorId;
+			
+			BasicDBObject obj = new BasicDBObject();
+			obj.append("questions",questions);
+			obj.append("challenges", response.items);
+			obj.append("visitorId", visitorId);
+			
+			BasicDBObject user = new BasicDBObject("visitorId", visitorId);
+			Database.getCollection(Database.MONGO_TEMP_QUESTION_STORE).update(user, obj, true, false);
+			
 			
 		}
 		
-		//Step 3: Load the configuration information from the map.xml file
-		String mapXMLFile = System.getenv("SLAP_MAP_XML_FILE");
-		mapXMLFile = mapXMLFile == null || mapXMLFile.isEmpty() ? MAP_FILENAME : mapXMLFile;
-		
-		System.out.println("Loading configuration from " + mapXMLFile);
-		ConfigurationMap configDetails = ConfigurationMap.getConfig(mapXMLFile);
-		
-		//Step 4: Prepare Server Query and fetch response from server
-		//TODO: parallelize question and challenge response
-		MultivaluedMap<String, String> questionParams = new MultivaluedHashMap<String, String>();
-		questionParams.putAll(queryParams);
-		questionParams.putSingle(SOURCE_PARAM, "questions");
-		String questionResponse = new QueryManager().query(visitorId, questionParams, configDetails, "/questionresponse-1.xml");
-		
-		
-		
-		MultivaluedMap<String, String> challengeParams = new MultivaluedHashMap<String, String>();
-		challengeParams.putAll(queryParams);
-		challengeParams.putSingle(SOURCE_PARAM, "challenge");
-		String challengeResponse = new QueryManager().query(visitorId, queryParams, configDetails,"/challengeresponse-1.xml");
-
-
-		//Step 5: Merge the response and return the response
-		
-		response.questions = XmlParser.transformDoc(questionResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|questions");
-		response.items = XmlParser.transformDoc(challengeResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|challenge");
-		response.visitorId = visitorId;
-		
 		return response;
+
 	}
 
 	/**
@@ -181,7 +215,147 @@ public class SlapRestImpl {
 	 * @param queryParams the list of values provided.
 	 * @throws UnknownHostException 
 	 */
-	private void storeQuestionSubmission(long visitorId, MultivaluedMap<String, String> queryParams) throws UnknownHostException{
-		Question.storeQuestion(visitorId, queryParams);
+	private SlapResponse storeQuestionSubmission( String questionId, MultivaluedMap<String, String> queryParams) throws UnknownHostException{
+		
+		//for each question submission store the variable and facets 
+		//and return the next question
+		//Query String would contain
+		//var=<Variable Name>:<Variable value>&var=<Variable Name>:<Variable value>...
+		//Similarly facet would be contained in
+		//facet=<Facet Name>:<Facet value>&facet=<Facet Name>:<Facet value>...
+		List<String> variables = queryParams.get("var"),
+					facets = queryParams.get("facet");
+		
+		//split all variables and facet and store them in db
+		//all variables and facet are returned as <variable name>:<variable value>
+		
+		BasicDBList variablesToStore = new BasicDBList();
+		if(variables != null){
+			for(String variable : variables){
+				String[] keyVal = variable.split(":"); //split by : to get key and value
+				
+				if(keyVal.length != 2)
+					continue; //TODO: to decide whether to ignore if key val combination is not provided or to give an error
+				
+				variablesToStore.add(new BasicDBObject(keyVal[0], keyVal[1]));
+			}
+		}
+		
+		BasicDBList facetsToStore = new BasicDBList();
+		if(facets != null){
+			for(String facet : facets){
+				String[] keyVal = facet.split(":"); //split by : to get key and value
+				
+				if(keyVal.length != 2)
+					continue; //TODO: to decide whether to ignore if key val combination is not provided or to give an error
+				
+				facetsToStore.add(new BasicDBObject(keyVal[0], keyVal[1]));
+			}
+		}
+		
+		BasicDBObject objectToStore = new BasicDBObject("visitorId", visitorId).append("questionId", questionId);
+		objectToStore.append("variables", variablesToStore)
+					 .append("facets", facetsToStore);
+		
+		BasicDBObject query = new BasicDBObject("visitorId", visitorId).append("questionId", questionId);
+		
+		Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).update(query, objectToStore, true, false);
+		
+		SlapResponse response = new SlapResponse();
+		response.visitorId = visitorId;
+		response.questions = new ArrayList<Map<String, Object>>();
+		
+		query = new BasicDBObject("visitorId", visitorId);
+		DBObject cachedEntity = Database.getCollection(Database.MONGO_TEMP_QUESTION_STORE).findOne(query);
+		Map<String, Object> nextQuestion = getNextQuestion(questionId, (List<Map<String, Object>>)cachedEntity.get("questions"));
+		
+		//if next question is null it is time to fetch questions from server
+		response.questions.add(nextQuestion);
+		response.items = substituteVariables((List<Map<String, Object>>)cachedEntity.get("challenges"));
+		
+		return response;
+		//Question.storeQuestion(visitorId, queryParams);
+	}
+	
+	private Map<String, Object> getNextQuestion(String questionId,List<Map<String, Object>> questions) throws UnknownHostException {
+		
+		
+		for(int index = 0, length = questions.size(); index < length; index++){
+			Map<String, Object> question = questions.get(index);
+			System.out.println("Checking question "  +question.get("id"));
+			if(question.get("id").equals(questionId)){
+				
+				if(index + 1 < length)
+					return questions.get(index+1);
+			}
+			
+		}
+	
+		return null;
+	}
+
+	/**
+	 * Substitutes all the variables in the challenge and returns the new challenge
+	 * @return
+	 * @throws UnknownHostException 
+	 */
+	private List<Map<String, Object>> substituteVariables(List<Map<String, Object>> items) throws UnknownHostException{
+		BasicDBObject query = new BasicDBObject("visitorId", visitorId);
+		DBCursor cursor = Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).find(query);
+		boolean wasReplaced = false;
+		
+		List<StringBuilder> allItemTemplates = new ArrayList<StringBuilder>();
+		for(Map<String, Object> item : items){
+			String itemTemplate = (String) item.get("itemtemplate");
+			
+			allItemTemplates.add(new StringBuilder(itemTemplate));
+		}
+		
+		
+		//find all the responded variables and use them to replace all text in items
+		while(cursor.hasNext()){
+			wasReplaced = true;
+			DBObject storedResponse = cursor.next(); //get the response for a question
+			BasicDBList variables = (BasicDBList)storedResponse.get("variables");
+			
+			for(int index = 0; index < variables.size(); index++){
+				DBObject variable = (DBObject)variables.get(index);
+				String key = variable.keySet().iterator().next();
+				String value = (String)variable.get(key);
+				
+				key = "&" + key;
+				
+				for(StringBuilder itemTemplate : allItemTemplates){
+					
+					replaceAll(itemTemplate, key, value);
+					System.out.println(itemTemplate);
+				}
+				
+			}
+		}
+		
+		//rewrite the string in the param object
+		if(wasReplaced){
+			int index = 0;
+			for(Map<String, Object> item : items){
+				
+				item.put("itemtemplate", allItemTemplates.get(index).toString());
+				
+				index++;
+			}
+		}
+		
+		return items;
+	}
+	
+	private void replaceAll(StringBuilder builder, String from, String to)
+	{
+	    int index = builder.indexOf(from);
+	    while (index != -1)
+	    {
+	        builder.replace(index, index + from.length(), to);
+	        index += to.length(); // Move to the end of the replacement
+	        index = builder.indexOf(from, index);
+	    }
 	}
 }

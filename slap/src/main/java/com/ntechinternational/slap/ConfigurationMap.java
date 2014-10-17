@@ -16,6 +16,8 @@ public class ConfigurationMap {
 	public String backendDocNode;
 	public String questionPath;
 	public String challengePath;
+	public String mongoAddress;
+	public int mongoPort;
 	
 	public List<RequestParam> requestParams;
 	/**
@@ -62,7 +64,12 @@ public class ConfigurationMap {
 			singletonMap = new ConfigurationMap();
 			
 			try{ 
+				System.out.println("Loading map file from " + mapFileName);
+				
 				XMLConfiguration config = new XMLConfiguration(mapFileName); //load the configuration file
+				
+				singletonMap.mongoPort = config.getInt("mongo.serverPort");
+				singletonMap.mongoAddress = config.getString("mongo.serverAddress");
 				
 				singletonMap.requestURL = config.getString("request.url");
 				singletonMap.questionPath = config.getString("request.questionPath");
