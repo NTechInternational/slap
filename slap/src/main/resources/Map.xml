@@ -1,16 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <config>
+    <mongo>
+        <serverAddress>localhost</serverAddress>
+        <serverPort>27017</serverPort>
+    </mongo>
 	<request>
-	   <url>http://localhost:8000</url>
-	   <!--  questionPath>/questionresponse-1.xml</questionPath>
-	   <challengePath>/challengeresponse-1.xml</challengePath -->
+	   <url>http://localhost:8983</url>
+	   <questionPath>/solr/collection1/questions</questionPath>
+	   <challengePath>/solr/collection1/items</challengePath>
 	    <requiredParam>
 	       <!--param name="source" value="" type="filter"/--> <!--  &fq=source:questions/challenge -->
-	       <param name="BusinessModel_ss" value="" type="filter"/> 
+	       <param name="BusinessModel_ss" value="All" type="filter"/> 
 	    </requiredParam>
 	     <otherParam>
 	     	<param name="wt" value="json"/>
 	        <param name="rows" value="5" type="default" />
+	        <param name="sort" value="priority_i%20desc" type="default" />
 	    </otherParam>
 	</request>
 	<response>
