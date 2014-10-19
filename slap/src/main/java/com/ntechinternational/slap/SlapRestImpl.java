@@ -4,7 +4,6 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -33,6 +32,8 @@ public class SlapRestImpl {
 	private static final String MAP_FILENAME = "Map.xml";
 	private static final String UNSUPPORTED_API_VERSION = "API Version unsupported, please provide correct apiversion parameter";
 	private static final Object TYPE_SELECT = "select";
+	
+	enum Interaction { Submit, Select, Done, StartOver, Default };
 	
 	private long visitorId = 0;
 	
@@ -124,6 +125,45 @@ public class SlapRestImpl {
 		  "startOver" => User session Start over				[Interaction 4]
 
 		*/
+		/*
+		Interaction interactionType = Interaction.Default;
+		String queryInteractionType = queryParams.getFirst(TYPE_PARAM);
+		if(queryInteractionType != null && !queryInteractionType.isEmpty()){
+			try{
+				
+				queryInteractionType = queryInteractionType.substring(0, 1).toUpperCase() + queryInteractionType.substring(1);
+				interactionType = Interaction.valueOf(queryInteractionType);
+			}
+			catch(IllegalArgumentException ex){
+				//safely ignoring illegal argument exception
+				response.errorDescription = "Invalid interaction type submitted " + queryInteractionType;
+				return response;
+			}
+		}
+		
+		switch(interactionType){
+		case Select:
+			response.errorDescription = "Select interaction";
+			break;
+		case Submit:
+			response.errorDescription = "Submit Interaction";
+			break;
+		case Done:
+			response.errorDescription = "Done interaction";
+			break;
+		case StartOver:
+			response.errorDescription = "Start over interaction";
+			break;
+		
+		default:
+			response.errorDescription = "Default interaction called";
+			break;
+		}
+		
+		if(true)
+			return response;
+		*/
+		
 		System.out.println(queryParams.getFirst(TYPE_PARAM));
 		if(queryParams.containsKey(TYPE_PARAM)){
 			String typeValue = (String) queryParams.getFirst(TYPE_PARAM);
@@ -158,21 +198,22 @@ public class SlapRestImpl {
 
 			//Step 4: Merge the response and return the response
 			
-			List<Map<String, Object>> questions = XmlParser.transformDoc(questionResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|questions"); 
-			int index = 0;
+			response.questions = XmlParser.transformDoc(questionResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|questions"); 
+			List<Map<String, Object>> challenges = XmlParser.transformDoc(challengeResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|challenge");
 			
-			//always return a single question on the top of the list by default
-			response.questions = questions.subList(index, 1);
-			response.items = XmlParser.transformDoc(challengeResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|challenge");
+			response.items = substituteVariables(challenges);
 			response.visitorId = visitorId;
 			
+			/*
+			 no temporary store required
 			BasicDBObject obj = new BasicDBObject();
-			obj.append("questions",questions);
+			obj.append("questions",response.questions);
 			obj.append("challenges", response.items);
 			obj.append("visitorId", visitorId);
 			
 			BasicDBObject user = new BasicDBObject("visitorId", visitorId);
 			Database.getCollection(Database.MONGO_TEMP_QUESTION_STORE).update(user, obj, true, false);
+			*/
 			
 			
 		}
@@ -265,19 +306,19 @@ public class SlapRestImpl {
 		response.visitorId = visitorId;
 		response.questions = new ArrayList<Map<String, Object>>();
 		
-		query = new BasicDBObject("visitorId", visitorId);
-		DBObject cachedEntity = Database.getCollection(Database.MONGO_TEMP_QUESTION_STORE).findOne(query);
-		Map<String, Object> nextQuestion = getNextQuestion(questionId, (List<Map<String, Object>>)cachedEntity.get("questions"));
+		//query = new BasicDBObject("visitorId", visitorId);
+		//DBObject cachedEntity = Database.getCollection(Database.MONGO_TEMP_QUESTION_STORE).findOne(query);
+		//Map<String, Object> nextQuestion = getNextQuestion(questionId, (List<Map<String, Object>>)cachedEntity.get("questions"));
 		
 		//if next question is null it is time to fetch questions from server
-		response.questions.add(nextQuestion);
-		response.items = substituteVariables((List<Map<String, Object>>)cachedEntity.get("challenges"));
+		//response.questions.add(nextQuestion);
+		//response.items = substituteVariables((List<Map<String, Object>>)cachedEntity.get("challenges"));
 		
 		return response;
 		//Question.storeQuestion(visitorId, queryParams);
 	}
 	
-	private Map<String, Object> getNextQuestion(String questionId,List<Map<String, Object>> questions) throws UnknownHostException {
+	/*private Map<String, Object> getNextQuestion(String questionId,List<Map<String, Object>> questions) throws UnknownHostException {
 		
 		
 		for(int index = 0, length = questions.size(); index < length; index++){
@@ -292,7 +333,7 @@ public class SlapRestImpl {
 		}
 	
 		return null;
-	}
+	}*/
 
 	/**
 	 * Substitutes all the variables in the challenge and returns the new challenge
@@ -310,6 +351,8 @@ public class SlapRestImpl {
 			
 			allItemTemplates.add(new StringBuilder(itemTemplate));
 		}
+		
+		
 		
 		
 		//find all the responded variables and use them to replace all text in items
