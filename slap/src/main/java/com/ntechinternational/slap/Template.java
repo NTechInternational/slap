@@ -1,5 +1,7 @@
 package com.ntechinternational.slap;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 import java.util.regex.Matcher;
@@ -14,6 +16,8 @@ public class Template{
 	static final Pattern variablePattern = Pattern.compile("(\\[[^\\]]*\\])|(&\\w+)");
 	static final Pattern simpleVariablePattern = Pattern.compile("(&\\w+)");
 
+	public List<String> variablesWithValue;
+	public List<String> variablesWithoutValue;
 	
 	final String template;
 	public StringBuilder output;
@@ -24,6 +28,8 @@ public class Template{
 		this.template = template;
 		output = new StringBuilder(template);
 		matches = new Stack<Match>();
+		variablesWithValue = new ArrayList<String>();
+		variablesWithoutValue = new ArrayList<String>();
 	}
 	
 	/**
@@ -31,19 +37,19 @@ public class Template{
 	 * @param variableValues the map containing the value for the variable substitution
 	 * @return the string with variable replaced
 	 */
-	public String process(Map<String, String> variableValues){
+	public String process(Map<String, String> variableValues, Map<String, String> defaultValues){
 		//match and record all optional and simple variables
 		Matcher matcher = variablePattern.matcher(template);
 		
 		while(matcher.find()) matches.push(new Match(matcher.start(), matcher.end()));
 		
-		return getOutput(variableValues);
+		return getOutput(variableValues, defaultValues);
 	}
 	
 	/**
 	 * returns the string output with variables replaced
 	 */
-	private String getOutput(Map<String, String> variableValues){
+	private String getOutput(Map<String, String> variableValues, Map<String, String> defaultValues){
 		
 		while(matches.size() != 0){
 		Match match = matches.pop();
@@ -64,7 +70,7 @@ public class Template{
 				StringBuilder subOutput = new StringBuilder(optParam);
 				while(subMatches.size() != 0){
 					Match subMatch = subMatches.pop();
-					replaced |= replaceVariable(subOutput, subMatch, variableValues);
+					replaced |= replaceVariable(subOutput, subMatch, variableValues, defaultValues);
 				}
 				
 				String toReplaceWith = ""; //replaces with empty string if no variable value substitution has been done.
@@ -80,7 +86,7 @@ public class Template{
 			}
 			else{
 				//replace the variables in string with value for simple variable
-				replaceVariable(output, match, variableValues);
+				replaceVariable(output, match, variableValues, defaultValues);
 			}
 		
 		}
@@ -96,18 +102,26 @@ public class Template{
 	 * @return <code>true</code> if a replacement has been made
 	 * 		   <code>false</code> if no replacement has been done.
 	 */
-	private boolean replaceVariable(StringBuilder output, Match match, Map<String, String> variableValues){
+	private boolean replaceVariable(StringBuilder output, Match match, Map<String, String> variableValues, Map<String, String>defaultValues){
 		boolean replaced = false;
 		
 		//perform simple replacement
 		String variableName = output.substring(match.startIndex, match.endIndex);
 		if(variableName.startsWith("&")){
 			//all variables start with ampersand
-			String value = variableValues.get(variableName);
+			String value = variableValues.get(variableName); //find the variable's value in responded list
+			
+			if(value == null) //if it is not found use the default list to populate
+				value = defaultValues.get(variableName);
+			
 			if(value != null){
 				System.out.println("Replacement done for " + variableName); 
 				output.replace(match.startIndex, match.endIndex, value);
 				replaced = true;
+				variablesWithValue.add(variableName);
+			}
+			else{
+				variablesWithoutValue.add(variableName);
 			}
 		}
 		

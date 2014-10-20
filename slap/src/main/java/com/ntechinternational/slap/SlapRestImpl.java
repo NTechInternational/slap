@@ -18,6 +18,7 @@ import javax.ws.rs.core.UriInfo;
 
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
+import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 
@@ -117,7 +118,7 @@ public class SlapRestImpl {
 			return response;
 		}
 		
-		/*Step 2: Based on the various submission perform actions
+		/*Step 3: Based on the various submission perform actions
 		  the various interactions could be
 		   &qid=2001&label=customer name&value=customer&qtype=variable&..&visitorId=123&type=submit
 		  "submit" => User answers/submits response to question [Interaction 1]
@@ -126,7 +127,7 @@ public class SlapRestImpl {
 		  "startOver" => User session Start over				[Interaction 4]
 
 		*/
-		/*
+		
 		Interaction interactionType = Interaction.Default;
 		String queryInteractionType = queryParams.getFirst(TYPE_PARAM);
 		if(queryInteractionType != null && !queryInteractionType.isEmpty()){
@@ -144,10 +145,10 @@ public class SlapRestImpl {
 		
 		switch(interactionType){
 		case Select:
-			response.errorDescription = "Select interaction";
+			selectInteraction(response, queryParams, configDetails);
 			break;
 		case Submit:
-			response.errorDescription = "Submit Interaction";
+			submitInteraction(response, queryParams, configDetails);
 			break;
 		case Done:
 			response.errorDescription = "Done interaction";
@@ -157,75 +158,168 @@ public class SlapRestImpl {
 			break;
 		
 		default:
-			response.errorDescription = "Default interaction called";
+			getResponseFromServer(response, queryParams, configDetails, null, new HashMap<String, String>());
 			break;
 		}
 		
-		if(true)
-			return response;
-		*/
-		
-		System.out.println(queryParams.getFirst(TYPE_PARAM));
-		if(queryParams.containsKey(TYPE_PARAM)){
-			String typeValue = (String) queryParams.getFirst(TYPE_PARAM);
-			
-			if(typeValue.equals(TYPE_SUBMIT)){
-				//INTERACTION 1
-				System.out.println("Received submit query");
-				String questionId = queryParams.getFirst("qid");
-				return storeQuestionSubmission(questionId, queryParams);
-				
-			}
-			else if(typeValue.equals(TYPE_SELECT)){
-				//INTERACTION 2
-			}
-
-		}
-		else{
-			
-			//Step 3: Prepare Server Query and fetch response from server
-			//TODO: parallelize question and challenge response
-			MultivaluedMap<String, String> questionParams = new MultivaluedHashMap<String, String>();
-			questionParams.putAll(queryParams);
-			questionParams.putSingle(SOURCE_PARAM, "questions");
-			String questionResponse = new QueryManager().query(visitorId, questionParams, configDetails, configDetails.questionPath);
-			
-			
-			
-			MultivaluedMap<String, String> challengeParams = new MultivaluedHashMap<String, String>();
-			challengeParams.putAll(queryParams);
-			challengeParams.putSingle(SOURCE_PARAM, "challenge");
-			String challengeResponse = new QueryManager().query(visitorId, queryParams, configDetails, configDetails.challengePath );
-
-
-			//Step 4: Merge the response and return the response
-			
-			response.questions = XmlParser.transformDoc(questionResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|questions"); 
-			List<Map<String, Object>> challenges = XmlParser.transformDoc(challengeResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|challenge");
-			
-			changeSchemaForAnswers(response.questions);
-			
-			response.items = substituteVariables(challenges);
-			response.visitorId = visitorId;
-			
-			/*
-			 no temporary store required
-			BasicDBObject obj = new BasicDBObject();
-			obj.append("questions",response.questions);
-			obj.append("challenges", response.items);
-			obj.append("visitorId", visitorId);
-			
-			BasicDBObject user = new BasicDBObject("visitorId", visitorId);
-			Database.getCollection(Database.MONGO_TEMP_QUESTION_STORE).update(user, obj, true, false);
-			*/
-			
-			
-		}
 		
 		return response;
 
 	}
+	
+	private void selectInteraction(SlapResponse response,
+			MultivaluedMap<String, String> queryParams,
+			ConfigurationMap configDetails) throws Exception {
+		//TODO: save the item id in select interaction
+		BasicDBObject query = new BasicDBObject("visitorId", visitorId);
+		DBCursor allQuestions = Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).find(query);
+		
+		Map<String, String> respondedVariables = new HashMap<String, String>();
+		
+		while(allQuestions.hasNext()){
+			DBObject question = allQuestions.next();
+			
+			BasicDBList variables = (BasicDBList)question.get("variables");
+			if(variables != null){
+				for(Object variable: variables){
+					DBObject f = (DBObject)variable;
+					String key = f.keySet().iterator().next();
+					respondedVariables.put(key, f.get(key).toString());
+				}
+			}
+		}
+		
+		
+		getResponseFromServer(response, queryParams, configDetails, null, respondedVariables);
 
+	}
+
+	/**
+	 * Handler for submit interaction
+	 * @throws Exception 
+	 */
+	private void submitInteraction(SlapResponse response, MultivaluedMap<String, String> queryParams, ConfigurationMap configDetails) throws Exception{
+		String questionId = queryParams.getFirst("qid");
+		String itemId = queryParams.getFirst("itemid");
+		
+		storeQuestionSubmission(questionId, queryParams);
+		
+		
+		BasicDBObject query = new BasicDBObject("visitorId", visitorId);
+		DBCursor allQuestions = Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).find(query);
+		
+		//append all facets provided
+		MultivaluedMap<String, String> additionalParams = new MultivaluedHashMap<String, String>();
+		
+		Map<String, String> respondedVariables = new HashMap<String, String>();
+		
+		while(allQuestions.hasNext()){
+			DBObject question = allQuestions.next();
+			BasicDBList facets = (BasicDBList)question.get("facets");
+			if(facets != null){
+				for(Object facet: facets){
+					DBObject f = (DBObject)facet;
+					String key = f.keySet().iterator().next();
+					additionalParams.putSingle("fq", key + ":" + f.get(key) );
+				}
+			}
+			
+			BasicDBList variables = (BasicDBList)question.get("variables");
+			if(variables != null){
+				for(Object variable: variables){
+					DBObject f = (DBObject)variable;
+					String key = f.keySet().iterator().next();
+					respondedVariables.put(key, f.get(key).toString());
+				}
+			}
+
+		}
+		
+		//if item id is not null, that is a challenge has been selected
+		if(itemId != null && itemId.isEmpty() == false){
+			additionalParams.clear(); //we are not using the facet query but variable query
+			
+			MultivaluedMap<String, String> paramsToAdd = new MultivaluedHashMap<String, String>();
+			paramsToAdd.putSingle("fq", "id:" + itemId);
+			String challengeResponse = new QueryManager().query(visitorId, queryParams, configDetails, configDetails.challengePath, paramsToAdd);
+			
+			System.out.println("Challenge Response: " + challengeResponse);
+			List<Map<String, Object>> challenges = XmlParser.transformDoc(challengeResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|challenge");
+			if(challenges.size() == 1){
+				Template substitute = new Template(challenges.get(0).get("itemtemplate").toString());
+				
+				substitute.process(respondedVariables, VariableUtility.getVariablesFromString(challenges.get(0).get("variables").toString()));
+				
+				//check if any variable value is missing
+				
+				if(substitute.variablesWithoutValue.size() > 0){
+					StringBuilder variableQuery = new StringBuilder();
+					variableQuery.append("Variables_s:(");
+					for(int index = 0, length = substitute.variablesWithoutValue.size(); index < length; index++){
+						String variable = substitute.variablesWithoutValue.get(index);								
+						variableQuery.append(variable);
+						if(index+1 != length){
+							//is not the last query append
+							variableQuery.append(" OR ");
+						}
+					}
+					variableQuery.append(")");
+					
+					System.out.println("Variable query : "  + variableQuery);
+					
+					additionalParams.putSingle("fq", variableQuery.toString());
+				}
+			}
+		}
+		
+		
+		getResponseFromServer(response, queryParams, configDetails, additionalParams, respondedVariables);
+
+	}
+
+	/**
+	 * This method performs the default interaction with the server and sets the slap response with correct values.
+	 */
+	private void getResponseFromServer(SlapResponse response, MultivaluedMap<String, String> queryParams, 
+			ConfigurationMap configDetails, MultivaluedMap<String, String> paramsToSubmit,
+			Map<String, String> respondedValues)
+	throws Exception{
+		
+		MultivaluedMap<String, String> questionParams = new MultivaluedHashMap<String, String>();
+		questionParams.putAll(queryParams);
+		questionParams.putSingle(SOURCE_PARAM, "questions");
+		String questionResponse = new QueryManager().query(visitorId, questionParams, configDetails, configDetails.questionPath, paramsToSubmit);
+		
+		
+		
+		MultivaluedMap<String, String> challengeParams = new MultivaluedHashMap<String, String>();
+		challengeParams.putAll(queryParams);
+		challengeParams.putSingle(SOURCE_PARAM, "challenge");
+		String challengeResponse = new QueryManager().query(visitorId, queryParams, configDetails, configDetails.challengePath, paramsToSubmit );
+
+
+		//Step 4: Merge the response and return the response
+		
+		response.questions = XmlParser.transformDoc(questionResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|questions"); 
+		List<Map<String, Object>> challenges = XmlParser.transformDoc(challengeResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|challenge");
+		
+		changeSchemaForAnswers(response.questions); //transforms the schema of answers to JSON object
+		
+		for(Map<String, Object> challenge : challenges){
+			challenge.put("itemtemplate", 
+					new Template(challenge.get("itemtemplate").toString())
+						.process(respondedValues, VariableUtility.getVariablesFromString(challenge.get("variables").toString())));
+						//just providing
+		}
+		
+		response.items = substituteVariables(challenges);
+		response.visitorId = visitorId;
+		
+	}
+
+	/**
+	 * transforms the question's answer from pipe separated value to JSON objects
+	 */
 	private void changeSchemaForAnswers(List<Map<String, Object>> questions) {
 		
 		
@@ -435,4 +529,6 @@ public class SlapRestImpl {
 	        index = builder.indexOf(from, index);
 	    }
 	}
+
+
 }
