@@ -2,6 +2,7 @@ package com.ntechinternational.slap;
 
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -181,6 +182,7 @@ public class SlapRestImpl {
 
 		}
 		else{
+			
 			//Step 3: Prepare Server Query and fetch response from server
 			//TODO: parallelize question and challenge response
 			MultivaluedMap<String, String> questionParams = new MultivaluedHashMap<String, String>();
@@ -201,6 +203,8 @@ public class SlapRestImpl {
 			response.questions = XmlParser.transformDoc(questionResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|questions"); 
 			List<Map<String, Object>> challenges = XmlParser.transformDoc(challengeResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|challenge");
 			
+			changeSchemaForAnswers(response.questions);
+			
 			response.items = substituteVariables(challenges);
 			response.visitorId = visitorId;
 			
@@ -220,6 +224,36 @@ public class SlapRestImpl {
 		
 		return response;
 
+	}
+
+	private void changeSchemaForAnswers(List<Map<String, Object>> questions) {
+		
+		
+		for(Map<String,Object> question : questions){
+			System.out.println(question);
+			String answer = question.get("answers").toString();
+			List<Map<String, String>> allOptions = new ArrayList<Map<String, String>>();
+			String[] options = answer.split("\\|"); // all options are separated by | symbol
+			for(String option : options){
+				Map<String, String> objOption = new HashMap<String, String>();; //objOption represents the JSON object that will be returned.
+				String[] values = option.split(","); //Each option describes Choice text, value and facet separated by ,
+				
+				for(String value : values){
+					String[] keyValuePair = value.split(":"); //Each value is separated by :
+					
+					if(keyValuePair.length == 2){
+						objOption.put(keyValuePair[0].trim(), keyValuePair[1].trim());
+					}
+				}
+				
+				if(objOption.size() > 0){
+					allOptions.add(objOption);
+				}
+			}
+			
+			question.put("answers", allOptions); //replace the answer with formatted answer option
+		}
+		
 	}
 
 	/**
