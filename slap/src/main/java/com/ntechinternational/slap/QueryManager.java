@@ -31,7 +31,8 @@ public class QueryManager {
 	public String query(long visitorId,
 			MultivaluedMap<String, String> queryParams,
 			ConfigurationMap config,
-			String resourcePath) throws Exception {
+			String resourcePath,
+			MultivaluedMap<String, String> paramsToAdd) throws Exception {
 		
 		Client client = ClientBuilder.newClient();
 		WebTarget target = client.target(config.requestURL).path(resourcePath);
@@ -58,7 +59,7 @@ public class QueryManager {
 				//throw new Exception("Missing required parameter: " + clientParamName);
 				//TODO: we might need to package the exception better and give a JSON exception
 				valueToPass = new ArrayList<String>();
-				valueToPass.add(requestParam.paramValue);
+				valueToPass.add(requestParam.paramValue);	
 			}
 			
 			if(queryParams.containsKey(clientParamName)){
@@ -85,6 +86,16 @@ public class QueryManager {
 					}
 				}
 			}
+		}
+		
+		if(paramsToAdd != null){
+			for(String paramKey : paramsToAdd.keySet()){
+				List<String> values = paramsToAdd.get(paramKey);
+				for(String value : values){
+					target = target.queryParam(paramKey, value);
+				}
+			}
+			
 		}
 		//includes all the results
 		target = target.queryParam("q", "*:*");
