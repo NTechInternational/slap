@@ -158,7 +158,7 @@ public class SlapRestImpl {
 			break;
 		
 		default:
-			getResponseFromServer(response, queryParams, configDetails, null, new HashMap<String, String>());
+			getResponseFromServer(response, queryParams, configDetails, null, null, new HashMap<String, String>());
 			break;
 		}
 		
@@ -170,7 +170,17 @@ public class SlapRestImpl {
 	private void selectInteraction(SlapResponse response,
 			MultivaluedMap<String, String> queryParams,
 			ConfigurationMap configDetails) throws Exception {
-		//TODO: save the item id in select interaction
+
+		String itemId = queryParams.getFirst("itemid");
+		
+		BasicDBObject visitorToUpdate = new BasicDBObject("visitorId", visitorId);
+		BasicDBObject updateInfo = new BasicDBObject("$set", new BasicDBObject("selectedChallenge", 
+										new BasicDBObject("itemId", itemId)));
+		//TODO: store the challenge too.
+		
+		Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME).update(visitorToUpdate, updateInfo);
+		
+		
 		BasicDBObject query = new BasicDBObject("visitorId", visitorId);
 		DBCursor allQuestions = Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).find(query);
 		
@@ -190,7 +200,7 @@ public class SlapRestImpl {
 		}
 		
 		
-		getResponseFromServer(response, queryParams, configDetails, null, respondedVariables);
+		getResponseFromServer(response, queryParams, configDetails, null, null, respondedVariables);
 
 	}
 
@@ -220,7 +230,10 @@ public class SlapRestImpl {
 				for(Object facet: facets){
 					DBObject f = (DBObject)facet;
 					String key = f.keySet().iterator().next();
-					additionalParams.putSingle("fq", key + ":" + f.get(key) );
+					String backendKey = configDetails.requestMappings.get(key);
+					if(backendKey == null)
+						backendKey = key;
+					additionalParams.putSingle("fq", backendKey + ":" + f.get(key) );
 				}
 			}
 			
@@ -273,7 +286,7 @@ public class SlapRestImpl {
 		}
 		
 		
-		getResponseFromServer(response, queryParams, configDetails, additionalParams, respondedVariables);
+		getResponseFromServer(response, queryParams, configDetails, additionalParams, null, respondedVariables);
 
 	}
 
@@ -281,21 +294,22 @@ public class SlapRestImpl {
 	 * This method performs the default interaction with the server and sets the slap response with correct values.
 	 */
 	private void getResponseFromServer(SlapResponse response, MultivaluedMap<String, String> queryParams, 
-			ConfigurationMap configDetails, MultivaluedMap<String, String> paramsToSubmit,
+			ConfigurationMap configDetails, MultivaluedMap<String, String> paramsToSubmitQuestion,
+			MultivaluedMap<String, String> paramsToSubmitItem,
 			Map<String, String> respondedValues)
 	throws Exception{
 		
 		MultivaluedMap<String, String> questionParams = new MultivaluedHashMap<String, String>();
 		questionParams.putAll(queryParams);
 		questionParams.putSingle(SOURCE_PARAM, "questions");
-		String questionResponse = new QueryManager().query(visitorId, questionParams, configDetails, configDetails.questionPath, paramsToSubmit);
+		String questionResponse = new QueryManager().query(visitorId, questionParams, configDetails, configDetails.questionPath, paramsToSubmitQuestion);
 		
 		
 		
 		MultivaluedMap<String, String> challengeParams = new MultivaluedHashMap<String, String>();
 		challengeParams.putAll(queryParams);
 		challengeParams.putSingle(SOURCE_PARAM, "challenge");
-		String challengeResponse = new QueryManager().query(visitorId, queryParams, configDetails, configDetails.challengePath, paramsToSubmit );
+		String challengeResponse = new QueryManager().query(visitorId, queryParams, configDetails, configDetails.challengePath, paramsToSubmitItem );
 
 
 		//Step 4: Merge the response and return the response
