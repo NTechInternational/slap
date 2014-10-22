@@ -15,6 +15,7 @@ import com.mongodb.DBObject;
 @XmlRootElement
 public class Visitor {
 	
+	private static SecureRandom random = new SecureRandom();
 
 	@XmlElement
 	public String userId;
@@ -68,8 +69,9 @@ public class Visitor {
 	}
 	
 	private static long generateRandomLong(){
-		SecureRandom random = new SecureRandom();
-		return random.nextLong();
+		
+		return ((long)random.nextInt(Integer.MAX_VALUE) << 32) + random.nextInt();
+		
 	}
 	
 	final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();
@@ -80,7 +82,7 @@ public class Visitor {
 	 */
 	@SuppressWarnings("unused")
 	private static String generateRandomNum(int length) {
-		SecureRandom random = new SecureRandom();
+		
 		byte bytes[] = new byte[length];
 		random.nextBytes(bytes);
 	    char[] hexChars = new char[bytes.length * 2];
