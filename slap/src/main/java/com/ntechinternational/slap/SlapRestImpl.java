@@ -158,7 +158,7 @@ public class SlapRestImpl {
 			break;
 		
 		default:
-			getResponseFromServer(response, queryParams, configDetails, null, new HashMap<String, String>());
+			getResponseFromServer(response, queryParams, configDetails, null, null, new HashMap<String, String>());
 			break;
 		}
 		
@@ -170,7 +170,17 @@ public class SlapRestImpl {
 	private void selectInteraction(SlapResponse response,
 			MultivaluedMap<String, String> queryParams,
 			ConfigurationMap configDetails) throws Exception {
-		//TODO: save the item id in select interaction
+
+		String itemId = queryParams.getFirst("itemid");
+		
+		BasicDBObject visitorToUpdate = new BasicDBObject("visitorId", visitorId);
+		BasicDBObject updateInfo = new BasicDBObject("$set", new BasicDBObject("selectedChallenge", 
+										new BasicDBObject("itemId", itemId)));
+		//TODO: store the challenge too.
+		
+		Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME).update(visitorToUpdate, updateInfo);
+		
+		
 		BasicDBObject query = new BasicDBObject("visitorId", visitorId);
 		DBCursor allQuestions = Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).find(query);
 		
@@ -189,8 +199,11 @@ public class SlapRestImpl {
 			}
 		}
 		
+		MultivaluedMap<String, String> additionalParams = new MultivaluedHashMap<String, String>();
+		findMissingVariables(queryParams, configDetails, itemId, additionalParams, respondedVariables);
 		
-		getResponseFromServer(response, queryParams, configDetails, null, respondedVariables);
+		
+		getResponseFromServer(response, queryParams, configDetails, additionalParams, null, respondedVariables);
 
 	}
 
@@ -201,6 +214,16 @@ public class SlapRestImpl {
 	private void submitInteraction(SlapResponse response, MultivaluedMap<String, String> queryParams, ConfigurationMap configDetails) throws Exception{
 		String questionId = queryParams.getFirst("qid");
 		String itemId = queryParams.getFirst("itemid");
+		
+		if(itemId == null){
+			BasicDBObject visitorToUpdate = new BasicDBObject("visitorId", visitorId);
+			//get a previously selected challenge
+			DBObject visitor = Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME).findOne(visitorToUpdate);
+			if(visitor != null && visitor.containsField("selectedChallenge.itemId")){
+				itemId = (String) visitor.get("selectedChallenge.itemId");
+			}
+			
+		}
 		
 		storeQuestionSubmission(questionId, queryParams);
 		
@@ -220,7 +243,11 @@ public class SlapRestImpl {
 				for(Object facet: facets){
 					DBObject f = (DBObject)facet;
 					String key = f.keySet().iterator().next();
-					additionalParams.putSingle("fq", key + ":" + f.get(key) );
+					String camelcaseKey = key.substring(0, 1).toLowerCase() + key.substring(1);
+					String backendKey = configDetails.requestMappings.get(camelcaseKey);
+					if(backendKey == null)
+						backendKey = key;
+					additionalParams.putSingle("fq", backendKey + ":" + f.get(key) );
 				}
 			}
 			
@@ -239,63 +266,77 @@ public class SlapRestImpl {
 		if(itemId != null && itemId.isEmpty() == false){
 			additionalParams.clear(); //we are not using the facet query but variable query
 			
-			MultivaluedMap<String, String> paramsToAdd = new MultivaluedHashMap<String, String>();
-			paramsToAdd.putSingle("fq", "id:" + itemId);
-			String challengeResponse = new QueryManager().query(visitorId, queryParams, configDetails, configDetails.challengePath, paramsToAdd);
-			
-			System.out.println("Challenge Response: " + challengeResponse);
-			List<Map<String, Object>> challenges = XmlParser.transformDoc(challengeResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|challenge");
-			if(challenges.size() == 1){
-				Template substitute = new Template(challenges.get(0).get("itemtemplate").toString());
-				
-				substitute.process(respondedVariables, VariableUtility.getVariablesFromString(challenges.get(0).get("variables").toString()));
-				
-				//check if any variable value is missing
-				
-				if(substitute.variablesWithoutValue.size() > 0){
-					StringBuilder variableQuery = new StringBuilder();
-					variableQuery.append("Variables_s:(");
-					for(int index = 0, length = substitute.variablesWithoutValue.size(); index < length; index++){
-						String variable = substitute.variablesWithoutValue.get(index);								
-						variableQuery.append(variable);
-						if(index+1 != length){
-							//is not the last query append
-							variableQuery.append(" OR ");
-						}
-					}
-					variableQuery.append(")");
-					
-					System.out.println("Variable query : "  + variableQuery);
-					
-					additionalParams.putSingle("fq", variableQuery.toString());
-				}
-			}
+			findMissingVariables(queryParams, configDetails, itemId,
+					additionalParams, respondedVariables);
 		}
 		
 		
-		getResponseFromServer(response, queryParams, configDetails, additionalParams, respondedVariables);
+		getResponseFromServer(response, queryParams, configDetails, additionalParams, null, respondedVariables);
 
+	}
+
+	/**
+	 * This method finds the missing variables in the challenge.
+	 */
+	private void findMissingVariables(
+			MultivaluedMap<String, String> queryParams,
+			ConfigurationMap configDetails, String itemId,
+			MultivaluedMap<String, String> additionalParams,
+			Map<String, String> respondedVariables) throws Exception {
+		
+		MultivaluedMap<String, String> paramsToAdd = new MultivaluedHashMap<String, String>();
+		paramsToAdd.putSingle("fq", "id:" + itemId);
+		String challengeResponse = new QueryManager().query(visitorId, queryParams, configDetails, configDetails.challengePath, paramsToAdd);
+		
+		System.out.println("Challenge Response: " + challengeResponse);
+		List<Map<String, Object>> challenges = XmlParser.transformDoc(challengeResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|challenge");
+		if(challenges.size() == 1){
+			Template substitute = new Template(challenges.get(0).get("itemtemplate").toString());
+			
+			substitute.process(respondedVariables, VariableUtility.getVariablesFromString(challenges.get(0).get("variables").toString()));
+			
+			//check if any variable value is missing
+			
+			if(substitute.variablesWithoutValue.size() > 0){
+				StringBuilder variableQuery = new StringBuilder();
+				variableQuery.append("Variables_s:(");
+				for(int index = 0, length = substitute.variablesWithoutValue.size(); index < length; index++){
+					String variable = substitute.variablesWithoutValue.get(index);								
+					variableQuery.append(variable);
+					if(index+1 != length){
+						//is not the last query append
+						variableQuery.append(" OR ");
+					}
+				}
+				variableQuery.append(")");
+				
+				System.out.println("Variable query : "  + variableQuery);
+				
+				additionalParams.putSingle("fq", variableQuery.toString());
+			}
+		}
 	}
 
 	/**
 	 * This method performs the default interaction with the server and sets the slap response with correct values.
 	 */
 	private void getResponseFromServer(SlapResponse response, MultivaluedMap<String, String> queryParams, 
-			ConfigurationMap configDetails, MultivaluedMap<String, String> paramsToSubmit,
+			ConfigurationMap configDetails, MultivaluedMap<String, String> paramsToSubmitQuestion,
+			MultivaluedMap<String, String> paramsToSubmitItem,
 			Map<String, String> respondedValues)
 	throws Exception{
 		
 		MultivaluedMap<String, String> questionParams = new MultivaluedHashMap<String, String>();
 		questionParams.putAll(queryParams);
 		questionParams.putSingle(SOURCE_PARAM, "questions");
-		String questionResponse = new QueryManager().query(visitorId, questionParams, configDetails, configDetails.questionPath, paramsToSubmit);
+		String questionResponse = new QueryManager().query(visitorId, questionParams, configDetails, configDetails.questionPath, paramsToSubmitQuestion);
 		
 		
 		
 		MultivaluedMap<String, String> challengeParams = new MultivaluedHashMap<String, String>();
 		challengeParams.putAll(queryParams);
 		challengeParams.putSingle(SOURCE_PARAM, "challenge");
-		String challengeResponse = new QueryManager().query(visitorId, queryParams, configDetails, configDetails.challengePath, paramsToSubmit );
+		String challengeResponse = new QueryManager().query(visitorId, queryParams, configDetails, configDetails.challengePath, paramsToSubmitItem );
 
 
 		//Step 4: Merge the response and return the response
