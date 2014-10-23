@@ -154,7 +154,7 @@ public class SlapRestImpl {
 			response.errorDescription = "Done interaction";
 			break;
 		case StartOver:
-			response.errorDescription = "Start over interaction";
+			resetAllInteraction(response, queryParams, configDetails);
 			break;
 		
 		default:
@@ -167,6 +167,23 @@ public class SlapRestImpl {
 
 	}
 	
+	private void resetAllInteraction(SlapResponse response,
+			MultivaluedMap<String, String> queryParams,
+			ConfigurationMap configDetails) throws Exception {
+		
+		BasicDBObject visitorQuery = new BasicDBObject("visitorId", this.visitorId);
+		
+		//remove from visitor map
+		//Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME).remove(visitorQuery);
+		//clearing visitorId is not necessary
+		
+		
+		Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).remove(visitorQuery);
+		
+		getResponseFromServer(response, queryParams, configDetails, null, null, new HashMap<String, String>());
+		
+	}
+
 	private void selectInteraction(SlapResponse response,
 			MultivaluedMap<String, String> queryParams,
 			ConfigurationMap configDetails) throws Exception {
