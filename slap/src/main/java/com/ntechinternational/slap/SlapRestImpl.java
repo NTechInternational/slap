@@ -154,7 +154,7 @@ public class SlapRestImpl {
 			response.errorDescription = "Done interaction";
 			break;
 		case StartOver:
-			response.errorDescription = "Start over interaction";
+			resetAllInteraction(response, queryParams, configDetails);
 			break;
 		
 		default:
@@ -167,6 +167,23 @@ public class SlapRestImpl {
 
 	}
 	
+	private void resetAllInteraction(SlapResponse response,
+			MultivaluedMap<String, String> queryParams,
+			ConfigurationMap configDetails) throws Exception {
+		
+		BasicDBObject visitorQuery = new BasicDBObject("visitorId", this.visitorId);
+		
+		//remove from visitor map
+		//Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME).remove(visitorQuery);
+		//clearing visitorId is not necessary
+		
+		
+		Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).remove(visitorQuery);
+		
+		getResponseFromServer(response, queryParams, configDetails, null, null, new HashMap<String, String>());
+		
+	}
+
 	private void selectInteraction(SlapResponse response,
 			MultivaluedMap<String, String> queryParams,
 			ConfigurationMap configDetails) throws Exception {
@@ -200,11 +217,25 @@ public class SlapRestImpl {
 		}
 		
 		MultivaluedMap<String, String> additionalParams = new MultivaluedHashMap<String, String>();
-		findMissingVariables(queryParams, configDetails, itemId, additionalParams, respondedVariables);
+		MultivaluedMap<String, String> additionalParamsWithDefaults = new MultivaluedHashMap<String, String>();
+		findMissingVariables(queryParams, configDetails, itemId, additionalParams, additionalParamsWithDefaults, respondedVariables);
+		
+		MultivaluedMap<String, String> additionalParamsChallenge = new MultivaluedHashMap<String, String>();
+		additionalParamsChallenge.putSingle("fq", "id:" + itemId);
 		
 		
-		getResponseFromServer(response, queryParams, configDetails, additionalParams, null, respondedVariables);
+		getResponseFromServer(response, queryParams, configDetails, additionalParams, additionalParamsChallenge, respondedVariables);
 
+		//if default variable values haven't been provided
+		if(additionalParamsWithDefaults.size() > 0){
+			MultivaluedMap<String, String> questionParams = new MultivaluedHashMap<String, String>();
+			questionParams.putAll(queryParams);
+			questionParams.putSingle(SOURCE_PARAM, "questions");
+			String questionResponse = new QueryManager().query(visitorId, questionParams, configDetails, configDetails.questionPath, additionalParamsWithDefaults);
+			
+			response.questions.addAll(XmlParser.transformDoc(questionResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|questions"));
+			
+		}
 	}
 
 	/**
@@ -225,6 +256,12 @@ public class SlapRestImpl {
 			
 		}
 		
+		MultivaluedMap<String, String> additionalParamsChallenge = new MultivaluedHashMap<String, String>();
+
+		if(itemId != null){
+			additionalParamsChallenge.putSingle("fq", "id:" + itemId);
+		}
+		
 		storeQuestionSubmission(questionId, queryParams);
 		
 		
@@ -233,6 +270,7 @@ public class SlapRestImpl {
 		
 		//append all facets provided
 		MultivaluedMap<String, String> additionalParams = new MultivaluedHashMap<String, String>();
+		MultivaluedMap<String, String> additionalParamsWithDefaultsOnly = new MultivaluedHashMap<String, String>();
 		
 		Map<String, String> respondedVariables = new HashMap<String, String>();
 		
@@ -267,12 +305,29 @@ public class SlapRestImpl {
 			additionalParams.clear(); //we are not using the facet query but variable query
 			
 			findMissingVariables(queryParams, configDetails, itemId,
-					additionalParams, respondedVariables);
+					additionalParams, additionalParamsWithDefaultsOnly, respondedVariables);
 		}
 		
 		
-		getResponseFromServer(response, queryParams, configDetails, additionalParams, null, respondedVariables);
-
+		getResponseFromServer(response, queryParams, configDetails, additionalParams, additionalParamsChallenge, respondedVariables);
+		
+		//return only one question when facet was submitted for a question
+		if(queryParams.getFirst("itemid") == null && 
+				queryParams.getFirst("qid") != null &&
+				queryParams.getFirst("facet") != null){
+			response.questions = response.questions.subList(0, 1);
+		}
+		else{
+			if(additionalParamsWithDefaultsOnly.size() > 0){
+				MultivaluedMap<String, String> questionParams = new MultivaluedHashMap<String, String>();
+				questionParams.putAll(queryParams);
+				questionParams.putSingle(SOURCE_PARAM, "questions");
+				String questionResponse = new QueryManager().query(visitorId, questionParams, configDetails, configDetails.questionPath, additionalParamsWithDefaultsOnly);
+				
+				response.questions.addAll(XmlParser.transformDoc(questionResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|questions"));
+				
+			}
+		}
 	}
 
 	/**
@@ -281,7 +336,8 @@ public class SlapRestImpl {
 	private void findMissingVariables(
 			MultivaluedMap<String, String> queryParams,
 			ConfigurationMap configDetails, String itemId,
-			MultivaluedMap<String, String> additionalParams,
+			MultivaluedMap<String, String> missingParams,
+			MultivaluedMap<String, String> missingParamsWithDefaultValueOnly,
 			Map<String, String> respondedVariables) throws Exception {
 		
 		MultivaluedMap<String, String> paramsToAdd = new MultivaluedHashMap<String, String>();
@@ -312,7 +368,21 @@ public class SlapRestImpl {
 				
 				System.out.println("Variable query : "  + variableQuery);
 				
-				additionalParams.putSingle("fq", variableQuery.toString());
+				missingParams.putSingle("fq", variableQuery.toString());
+				
+				StringBuilder variableWithoutValueQuery = new StringBuilder();
+				variableWithoutValueQuery.append("Variables_s:(");
+				for(int index = 0, length = substitute.variablesWithDefaultValueOnly.size(); index < length; index++){
+					String variable = substitute.variablesWithDefaultValueOnly.get(index);								
+					variableWithoutValueQuery.append(variable);
+					if(index+1 != length){
+						//is not the last query append
+						variableWithoutValueQuery.append(" OR ");
+					}
+				}
+				variableWithoutValueQuery.append(")");
+				
+				missingParamsWithDefaultValueOnly.putSingle("fq", variableWithoutValueQuery.toString());
 			}
 		}
 	}
