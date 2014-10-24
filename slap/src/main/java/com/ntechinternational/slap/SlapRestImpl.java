@@ -16,16 +16,16 @@ import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.UriInfo;
 
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.jaxrs.json.annotation.JacksonFeatures;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
-import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 
 @Path("/rest")
 public class SlapRestImpl {
 	
-	private static final String TYPE_SUBMIT = "submit";
 	private static final String TYPE_PARAM = "type";
 	private static final String API_VERSION_PARAM = "apiversion";
 	private static final String SOURCE_PARAM = "sourcetype";
@@ -33,20 +33,19 @@ public class SlapRestImpl {
 	private static final String VISITOR_ID = "visitorId";
 	private static final String MAP_FILENAME = "Map.xml";
 	private static final String UNSUPPORTED_API_VERSION = "API Version unsupported, please provide correct apiversion parameter";
-	private static final Object TYPE_SELECT = "select";
 	
 	enum Interaction { Submit, Select, Done, StartOver, Default };
 	
-	private long visitorId = 0;
+	private String visitorId = null;
 	
 	/**
 	 * This is the main web service method that processes all the various request and provides a response
-	 * @param visitorId the visitor id
 	 * @return the string response
 	 */
 	@GET
 	@Produces({MediaType.APPLICATION_JSON})
 	@Path("processrequest")
+	@JacksonFeatures(serializationEnable =  { SerializationFeature.INDENT_OUTPUT })
 	public SlapResponse processRequest(@Context UriInfo uriInfo){
 		
 		SlapResponse processedResponse = new SlapResponse();;
@@ -54,10 +53,10 @@ public class SlapRestImpl {
 		//if valid visitor id has been provided
 		//TODO: check if the test is valid, and meets the requirements
 		MultivaluedMap<String, String> queryParams = uriInfo.getQueryParameters(); 
-		long visitorId = -1; //default null value
+		String visitorId = ""; //default null value
 		int apiVersion = 0;
 		try{
-			visitorId = Long.parseLong(queryParams.getFirst(VISITOR_ID));
+			visitorId =  queryParams.getFirst(VISITOR_ID);
 			processedResponse.visitorId = visitorId;
 			this.visitorId = visitorId;
 			
@@ -70,7 +69,7 @@ public class SlapRestImpl {
 			}
 			
 			if(apiVersion == 1){
-				if(visitorId > 0){
+				if(visitorId != null && !visitorId.isEmpty()){
 					processedResponse = processRequest(queryParams);
 				}
 				else{
@@ -80,10 +79,6 @@ public class SlapRestImpl {
 			else{
 				processedResponse.errorDescription = UNSUPPORTED_API_VERSION; 
 			}
-		}
-		catch(NumberFormatException ex){
-			processedResponse.visitorId = 0;
-			processedResponse.errorDescription = INVALID_VISITOR_ID_PROVIDED;
 		}
 		catch(Exception ex){
 			System.err.println("An exception was occurred " + ex + " on ");
@@ -315,7 +310,7 @@ public class SlapRestImpl {
 		if(queryParams.getFirst("itemid") == null && 
 				queryParams.getFirst("qid") != null &&
 				queryParams.getFirst("facet") != null){
-			response.questions = response.questions.subList(0, 1);
+			response.questions = response.questions.size() > 0 ? response.questions.subList(0, 1) : response.questions;
 		}
 		else{
 			if(additionalParamsWithDefaultsOnly.size() > 0){
