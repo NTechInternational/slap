@@ -16,8 +16,6 @@ import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.UriInfo;
 
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.jaxrs.json.annotation.JacksonFeatures;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCursor;
@@ -45,7 +43,6 @@ public class SlapRestImpl {
 	@GET
 	@Produces({MediaType.APPLICATION_JSON})
 	@Path("processrequest")
-	@JacksonFeatures(serializationEnable =  { SerializationFeature.INDENT_OUTPUT })
 	public SlapResponse processRequest(@Context UriInfo uriInfo){
 		
 		SlapResponse processedResponse = new SlapResponse();;
@@ -153,10 +150,38 @@ public class SlapRestImpl {
 			break;
 		
 		default:
-			getResponseFromServer(response, queryParams, configDetails, null, null, new HashMap<String, String>());
+			//TODO: send default param as BusinessModel__s:All
+			
+			BasicDBObject query = new BasicDBObject("visitorId", visitorId);
+			DBCursor allQuestions = Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).find(query);
+			
+			//append all facets provided
+			MultivaluedMap<String, String> additionalParams = new MultivaluedHashMap<String, String>();
+			
+			
+			while(allQuestions.hasNext()){
+				DBObject question = allQuestions.next();
+				BasicDBList facets = (BasicDBList)question.get("facets");
+				if(facets != null){
+					for(Object facet: facets){
+						DBObject f = (DBObject)facet;
+						String key = f.keySet().iterator().next();
+						String lowercaseKey = key.toLowerCase();
+						String backendKey = configDetails.requestMappings.get(lowercaseKey);
+						if(backendKey == null)
+							backendKey = key;
+						additionalParams.add("fq", backendKey + ":" + f.get(key) );
+					}
+				}
+			}
+			
+			if(additionalParams.size() == 0){
+				additionalParams.putSingle("fq", configDetails.requestMappings.get("businessmodel") + ":All");
+			}
+			
+			getResponseFromServer(response, queryParams, configDetails, additionalParams, null, new HashMap<String, String>());
 			break;
 		}
-		
 		
 		return response;
 
@@ -271,18 +296,21 @@ public class SlapRestImpl {
 		
 		while(allQuestions.hasNext()){
 			DBObject question = allQuestions.next();
+			
 			BasicDBList facets = (BasicDBList)question.get("facets");
 			if(facets != null){
 				for(Object facet: facets){
 					DBObject f = (DBObject)facet;
 					String key = f.keySet().iterator().next();
-					String camelcaseKey = key.substring(0, 1).toLowerCase() + key.substring(1);
+					String camelcaseKey = key.toLowerCase();
 					String backendKey = configDetails.requestMappings.get(camelcaseKey);
 					if(backendKey == null)
 						backendKey = key;
-					additionalParams.putSingle("fq", backendKey + ":" + f.get(key) );
+					additionalParams.add("fq", backendKey + ":" + f.get(key) );
 				}
 			}
+			
+			System.err.println(additionalParams);
 			
 			BasicDBList variables = (BasicDBList)question.get("variables");
 			if(variables != null){
@@ -294,6 +322,7 @@ public class SlapRestImpl {
 			}
 
 		}
+		
 		
 		//if item id is not null, that is a challenge has been selected
 		if(itemId != null && itemId.isEmpty() == false){
@@ -512,7 +541,7 @@ public class SlapRestImpl {
 				if(keyVal.length != 2)
 					continue; //TODO: to decide whether to ignore if key val combination is not provided or to give an error
 				
-				variablesToStore.add(new BasicDBObject(keyVal[0], keyVal[1]));
+				variablesToStore.add(new BasicDBObject("&".concat(keyVal[0]), keyVal[1]));
 			}
 		}
 		
