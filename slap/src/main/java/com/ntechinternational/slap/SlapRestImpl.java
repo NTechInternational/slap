@@ -2,6 +2,7 @@ package com.ntechinternational.slap;
 
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -143,7 +144,7 @@ public class SlapRestImpl {
 			submitInteraction(response, queryParams, configDetails);
 			break;
 		case Done:
-			response.errorDescription = "Done interaction";
+			doneInteraction(response, queryParams, configDetails);
 			break;
 		case StartOver:
 			resetAllInteraction(response, queryParams, configDetails);
@@ -187,6 +188,33 @@ public class SlapRestImpl {
 
 	}
 	
+	private void doneInteraction(SlapResponse response,
+			MultivaluedMap<String, String> queryParams,
+			ConfigurationMap configDetails) throws UnknownHostException {
+		
+		//save all the interaction
+		BasicDBObject query = new BasicDBObject("visitorId", this.visitorId);
+		
+		DBCursor allQuestions = Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).find(query);
+		
+		BasicDBObject objectToSave = new BasicDBObject("visitorId", this.visitorId).append("sessionCompletedOn",new Date());
+		BasicDBList questions = new BasicDBList();
+		
+		//append all facets provided
+		MultivaluedMap<String, String> additionalParams = new MultivaluedHashMap<String, String>();
+		
+		
+		while(allQuestions.hasNext()){
+			DBObject question = allQuestions.next();
+			question.removeField("visitorId");
+			questions.add(question);
+		}
+		
+		objectToSave.append("questions", questions);
+		
+		Database.getCollection(Database.MONGO_VISITOR_SESSION_COLLECTION_NAME).insert(objectToSave);
+	}
+
 	private void resetAllInteraction(SlapResponse response,
 			MultivaluedMap<String, String> queryParams,
 			ConfigurationMap configDetails) throws Exception {
