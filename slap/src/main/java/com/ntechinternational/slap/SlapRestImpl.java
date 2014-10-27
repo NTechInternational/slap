@@ -2,6 +2,7 @@ package com.ntechinternational.slap;
 
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,14 +19,12 @@ import javax.ws.rs.core.UriInfo;
 
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
-import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 
 @Path("/rest")
 public class SlapRestImpl {
 	
-	private static final String TYPE_SUBMIT = "submit";
 	private static final String TYPE_PARAM = "type";
 	private static final String API_VERSION_PARAM = "apiversion";
 	private static final String SOURCE_PARAM = "sourcetype";
@@ -33,15 +32,13 @@ public class SlapRestImpl {
 	private static final String VISITOR_ID = "visitorId";
 	private static final String MAP_FILENAME = "Map.xml";
 	private static final String UNSUPPORTED_API_VERSION = "API Version unsupported, please provide correct apiversion parameter";
-	private static final Object TYPE_SELECT = "select";
 	
 	enum Interaction { Submit, Select, Done, StartOver, Default };
 	
-	private long visitorId = 0;
+	private String visitorId = null;
 	
 	/**
 	 * This is the main web service method that processes all the various request and provides a response
-	 * @param visitorId the visitor id
 	 * @return the string response
 	 */
 	@GET
@@ -54,10 +51,10 @@ public class SlapRestImpl {
 		//if valid visitor id has been provided
 		//TODO: check if the test is valid, and meets the requirements
 		MultivaluedMap<String, String> queryParams = uriInfo.getQueryParameters(); 
-		long visitorId = -1; //default null value
+		String visitorId = ""; //default null value
 		int apiVersion = 0;
 		try{
-			visitorId = Long.parseLong(queryParams.getFirst(VISITOR_ID));
+			visitorId =  queryParams.getFirst(VISITOR_ID);
 			processedResponse.visitorId = visitorId;
 			this.visitorId = visitorId;
 			
@@ -70,7 +67,7 @@ public class SlapRestImpl {
 			}
 			
 			if(apiVersion == 1){
-				if(visitorId > 0){
+				if(visitorId != null && !visitorId.isEmpty()){
 					processedResponse = processRequest(queryParams);
 				}
 				else{
@@ -80,10 +77,6 @@ public class SlapRestImpl {
 			else{
 				processedResponse.errorDescription = UNSUPPORTED_API_VERSION; 
 			}
-		}
-		catch(NumberFormatException ex){
-			processedResponse.visitorId = 0;
-			processedResponse.errorDescription = INVALID_VISITOR_ID_PROVIDED;
 		}
 		catch(Exception ex){
 			System.err.println("An exception was occurred " + ex + " on ");
@@ -151,22 +144,77 @@ public class SlapRestImpl {
 			submitInteraction(response, queryParams, configDetails);
 			break;
 		case Done:
-			response.errorDescription = "Done interaction";
+			doneInteraction(response, queryParams, configDetails);
 			break;
 		case StartOver:
 			resetAllInteraction(response, queryParams, configDetails);
 			break;
 		
 		default:
-			getResponseFromServer(response, queryParams, configDetails, null, null, new HashMap<String, String>());
+			//TODO: send default param as BusinessModel__s:All
+			
+			BasicDBObject query = new BasicDBObject("visitorId", visitorId);
+			DBCursor allQuestions = Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).find(query);
+			
+			//append all facets provided
+			MultivaluedMap<String, String> additionalParams = new MultivaluedHashMap<String, String>();
+			
+			
+			while(allQuestions.hasNext()){
+				DBObject question = allQuestions.next();
+				BasicDBList facets = (BasicDBList)question.get("facets");
+				if(facets != null){
+					for(Object facet: facets){
+						DBObject f = (DBObject)facet;
+						String key = f.keySet().iterator().next();
+						String lowercaseKey = key.toLowerCase();
+						String backendKey = configDetails.requestMappings.get(lowercaseKey);
+						if(backendKey == null)
+							backendKey = key;
+						additionalParams.add("fq", backendKey + ":" + f.get(key) );
+					}
+				}
+			}
+			
+			if(additionalParams.size() == 0){
+				additionalParams.putSingle("fq", configDetails.requestMappings.get("businessmodel") + ":All");
+			}
+			
+			getResponseFromServer(response, queryParams, configDetails, additionalParams, null, new HashMap<String, String>());
 			break;
 		}
-		
 		
 		return response;
 
 	}
 	
+	private void doneInteraction(SlapResponse response,
+			MultivaluedMap<String, String> queryParams,
+			ConfigurationMap configDetails) throws UnknownHostException {
+		
+		//save all the interaction
+		BasicDBObject query = new BasicDBObject("visitorId", this.visitorId);
+		
+		DBCursor allQuestions = Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).find(query);
+		
+		BasicDBObject objectToSave = new BasicDBObject("visitorId", this.visitorId).append("sessionCompletedOn",new Date());
+		BasicDBList questions = new BasicDBList();
+		
+		//append all facets provided
+		MultivaluedMap<String, String> additionalParams = new MultivaluedHashMap<String, String>();
+		
+		
+		while(allQuestions.hasNext()){
+			DBObject question = allQuestions.next();
+			question.removeField("visitorId");
+			questions.add(question);
+		}
+		
+		objectToSave.append("questions", questions);
+		
+		Database.getCollection(Database.MONGO_VISITOR_SESSION_COLLECTION_NAME).insert(objectToSave);
+	}
+
 	private void resetAllInteraction(SlapResponse response,
 			MultivaluedMap<String, String> queryParams,
 			ConfigurationMap configDetails) throws Exception {
@@ -276,18 +324,21 @@ public class SlapRestImpl {
 		
 		while(allQuestions.hasNext()){
 			DBObject question = allQuestions.next();
+			
 			BasicDBList facets = (BasicDBList)question.get("facets");
 			if(facets != null){
 				for(Object facet: facets){
 					DBObject f = (DBObject)facet;
 					String key = f.keySet().iterator().next();
-					String camelcaseKey = key.substring(0, 1).toLowerCase() + key.substring(1);
+					String camelcaseKey = key.toLowerCase();
 					String backendKey = configDetails.requestMappings.get(camelcaseKey);
 					if(backendKey == null)
 						backendKey = key;
-					additionalParams.putSingle("fq", backendKey + ":" + f.get(key) );
+					additionalParams.add("fq", backendKey + ":" + f.get(key) );
 				}
 			}
+			
+			System.err.println(additionalParams);
 			
 			BasicDBList variables = (BasicDBList)question.get("variables");
 			if(variables != null){
@@ -299,6 +350,7 @@ public class SlapRestImpl {
 			}
 
 		}
+		
 		
 		//if item id is not null, that is a challenge has been selected
 		if(itemId != null && itemId.isEmpty() == false){
@@ -315,7 +367,7 @@ public class SlapRestImpl {
 		if(queryParams.getFirst("itemid") == null && 
 				queryParams.getFirst("qid") != null &&
 				queryParams.getFirst("facet") != null){
-			response.questions = response.questions.subList(0, 1);
+			response.questions = response.questions.size() > 0 ? response.questions.subList(0, 1) : response.questions;
 		}
 		else{
 			if(additionalParamsWithDefaultsOnly.size() > 0){
@@ -517,7 +569,7 @@ public class SlapRestImpl {
 				if(keyVal.length != 2)
 					continue; //TODO: to decide whether to ignore if key val combination is not provided or to give an error
 				
-				variablesToStore.add(new BasicDBObject(keyVal[0], keyVal[1]));
+				variablesToStore.add(new BasicDBObject("&".concat(keyVal[0]), keyVal[1]));
 			}
 		}
 		

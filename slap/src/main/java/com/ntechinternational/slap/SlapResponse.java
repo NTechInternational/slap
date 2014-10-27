@@ -17,7 +17,7 @@ public class SlapResponse {
 	
 	
 	@XmlElement
-	public long visitorId;
+	public String visitorId;
 	
 	@XmlElementWrapper
 	@XmlElement(name = "question", nillable = true)

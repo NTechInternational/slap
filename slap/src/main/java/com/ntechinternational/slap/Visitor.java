@@ -21,7 +21,7 @@ public class Visitor {
 	public String userId;
 	
 	@XmlElement
-	public long visitorId;
+	public String visitorId;
 	
 	@XmlElement
 	@JsonInclude(Include.NON_NULL)
@@ -38,7 +38,7 @@ public class Visitor {
 		DBCollection collection = Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME);
 		DBObject visitor = collection.findOne(new BasicDBObject("userId", userId));
 
-		return visitor == null ? null : new Visitor(userId, (Long)visitor.get("visitorId"));
+		return visitor == null ? null : new Visitor(userId, (String)visitor.get("visitorId"));
 		
 	}
 	
@@ -51,7 +51,7 @@ public class Visitor {
 	public static Visitor createVisitorFor(String userId) throws UnknownHostException{
 		DBCollection collection = Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME);
 		
-		long randomId = generateRandomLong();
+		String randomId = generateRandomNum(20);
 		DBObject visitor = new BasicDBObject("userId", userId)
 					  .append("visitorId", randomId);
 		
@@ -60,7 +60,7 @@ public class Visitor {
 		return new Visitor(userId, randomId);
 	}
 	
-	public static Visitor getUserWithVisitorId(long visitorId) throws UnknownHostException{
+	public static Visitor getUserWithVisitorId(String visitorId) throws UnknownHostException{
 		DBCollection collection = Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME);
 		
 		DBObject visitor = collection.findOne(new BasicDBObject("visitorId", visitorId));
@@ -80,7 +80,6 @@ public class Visitor {
 	 * @param length the length of the random number note this is half the length of the returned string.
 	 * @return a random hex string
 	 */
-	@SuppressWarnings("unused")
 	private static String generateRandomNum(int length) {
 		
 		byte bytes[] = new byte[length];
@@ -98,7 +97,7 @@ public class Visitor {
 		
 	}
 	
-	public Visitor(String userId, long visitorId){
+	public Visitor(String userId, String visitorId){
 		this.userId = userId;
 		this.visitorId = visitorId;
 	}

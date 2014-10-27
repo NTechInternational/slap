@@ -28,7 +28,7 @@ public class QueryManager {
 	 * @return a string response retrieved from the server
 	 * @throws Exception
 	 */
-	public String query(long visitorId,
+	public String query(String visitorId,
 			MultivaluedMap<String, String> queryParams,
 			ConfigurationMap config,
 			String resourcePath,

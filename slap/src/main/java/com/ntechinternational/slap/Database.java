@@ -11,6 +11,7 @@ public class Database {
 	private static final String MONGO_DB_NAME = "slap";
 	public static final String MONGO_VISITOR_COLLECTION_NAME = "visitors";
 	public static final String MONGO_QUESTION_COLLECTION_NAME = "questions";
+	public static final String MONGO_VISITOR_SESSION_COLLECTION_NAME = "visitorSession";
 	public static final String MONGO_TEMP_QUESTION_STORE = "tempQuestions";
 	public static final String MONGO_TEMP_CHALLENGE_STORE = "tempChallenges";
 	
@@ -63,7 +64,6 @@ public class Database {
 	 */
 	private static DB getDB() throws UnknownHostException{
 
-		
 		initialize();
 		return _mongoClient.getDB(MONGO_DB_NAME);
 	}
@@ -78,4 +78,5 @@ public class Database {
 	public static DBCollection getCollection(String collectionName) throws UnknownHostException {
 		return Database.getDB().getCollection(collectionName);
 	}
+	
 }
