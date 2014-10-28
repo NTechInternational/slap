@@ -182,7 +182,7 @@ public class SlapRestImpl {
 			}
 			
 			if(additionalParams.size() == 0){
-				additionalParams.putSingle("fq", configDetails.requestMappings.get("BusinessModel_ss") + ":All");
+				additionalParams.putSingle("fq", configDetails.requestMappings.get("businessmodel") + ":All");
 			}
 			
 			getResponseFromServer(response, queryParams, configDetails, additionalParams, null, new HashMap<String, String>());
@@ -753,7 +753,7 @@ public class SlapRestImpl {
 	{
 		StringBuilder sb = new StringBuilder(str); 
 
-		Pattern pattern = Pattern.compile("(\\(|\\)|\\[|\\])");
+		Pattern pattern = Pattern.compile("(\\[|\\])");
 		Matcher matcher = pattern.matcher(sb);
 		while (matcher.find())
 			sb.replace(matcher.end() - 1, matcher.end(), "#");
