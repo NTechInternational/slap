@@ -1,11 +1,16 @@
 package com.ntechinternational.slap;
 
 import java.net.UnknownHostException;
+import java.text.BreakIterator;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.text.BreakIterator;
+import java.util.Locale;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -177,7 +182,7 @@ public class SlapRestImpl {
 			}
 			
 			if(additionalParams.size() == 0){
-				additionalParams.putSingle("fq", configDetails.requestMappings.get("businessmodel") + ":All");
+				additionalParams.putSingle("fq", configDetails.requestMappings.get("BusinessModel_ss") + ":All");
 			}
 			
 			getResponseFromServer(response, queryParams, configDetails, additionalParams, null, new HashMap<String, String>());
@@ -663,6 +668,13 @@ public class SlapRestImpl {
 					
 					replaceAll(itemTemplate, key, value);
 					System.out.println(itemTemplate);
+					
+					// sentence parsing and convert first letter to uppercase
+					BreakIterator boundary = BreakIterator.getSentenceInstance(Locale.US);
+				    String source =itemTemplate.toString();
+				    itemTemplate.setLength(0);
+					itemTemplate.append(parseConvertSentence(boundary, source));
+					
 				}
 				
 			}
@@ -693,5 +705,71 @@ public class SlapRestImpl {
 	    }
 	}
 
+	private StringBuilder parseConvertSentence(BreakIterator bi, String source) {
+		
+		StringBuilder sb = new StringBuilder();
+		bi.setText(source);
 
+		int lastIndex = bi.first();
+		while (lastIndex != BreakIterator.DONE) {
+			int firstIndex = lastIndex;
+			lastIndex = bi.next();
+
+			if (lastIndex != BreakIterator.DONE) {
+				String sentence = source.substring(firstIndex, lastIndex);
+				
+				sb.append(applySentenceRules(sentence));
+				sb.append(" ");
+				
+			}
+		}
+		int len = sb.length();
+		if (sb.lastIndexOf(" ")==len-1)
+			sb.setLength(len-1);
+		
+		return sb;
+	}
+
+	private String applySentenceRules(String sentence)
+	{
+		String retStr = removeChar(convertUpperCase(sentence));
+		//remove multiple whitespace
+		retStr=retStr.replaceAll("(\\s)\\1","");
+		//remove dot
+		retStr= removeMultipleDot(retStr);
+		return retStr;
+	}
+	private String convertUpperCase(String str)
+	{
+		StringBuilder sb = new StringBuilder(str); 
+
+		Pattern pattern = Pattern.compile("(^|\\.|!|\\?)\\s*(\\w)");
+		Matcher matcher = pattern.matcher(sb);
+		while (matcher.find())
+			sb.replace(matcher.end() - 1, matcher.end(), matcher.group(2).toUpperCase());
+		return sb.toString();
+	}
+	private String removeChar(String str)
+	{
+		StringBuilder sb = new StringBuilder(str); 
+
+		Pattern pattern = Pattern.compile("(\\(|\\)|\\[|\\])");
+		Matcher matcher = pattern.matcher(sb);
+		while (matcher.find())
+			sb.replace(matcher.end() - 1, matcher.end(), "#");
+		
+		return sb.toString().trim().replaceAll("#","");
+	}
+	private String removeMultipleDot(String str)
+	{
+		StringBuilder buffy = new StringBuilder(str);
+		
+		Pattern pattern = Pattern.compile("(\\.\\s\\.{1,2})");
+		Matcher matcher = pattern.matcher(buffy);
+		
+		while (matcher.find())
+			buffy.replace(matcher.end() - 1, matcher.end(), "#");
+		
+		return buffy.toString().trim().replaceAll("#","");
+	}
 }
