@@ -182,8 +182,10 @@ public class SlapRestImpl {
 			}
 			
 			if(additionalParams.size() == 0){
-				additionalParams.putSingle("fq", configDetails.requestMappings.get("BusinessModel_ss") + ":All");
+				additionalParams.putSingle("fq", configDetails.requestMappings.get("businessmodel") + ":All");
 			}
+			
+			additionalParams.putSingle("rows", "1");
 			
 			getResponseFromServer(response, queryParams, configDetails, additionalParams, null, new HashMap<String, String>());
 			break;
@@ -234,6 +236,12 @@ public class SlapRestImpl {
 		Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).remove(visitorQuery);
 		
 		getResponseFromServer(response, queryParams, configDetails, null, null, new HashMap<String, String>());
+		
+		
+		BasicDBObject updateInfo = new BasicDBObject("$set", new BasicDBObject("selectedChallenge", 
+										null ));
+		
+		Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME).update(visitorQuery, updateInfo);
 		
 	}
 
