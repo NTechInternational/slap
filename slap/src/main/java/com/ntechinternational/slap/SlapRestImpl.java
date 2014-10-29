@@ -215,23 +215,32 @@ public class SlapRestImpl {
 
 	private void doneInteraction(SlapResponse response,
 			MultivaluedMap<String, String> queryParams,
-			ConfigurationMap configDetails) throws UnknownHostException {
+			ConfigurationMap configDetails) throws Exception {
+
+		if(queryParams.containsKey("qid") && (queryParams.containsKey("var") || queryParams.containsKey("facet"))){
+			//this is similar to submit interaction so save the submitted values
+			submitInteraction(response, queryParams, configDetails);
+		}
+		else{
+			defaultInteraction(response, queryParams, configDetails);
+		}
+
 		
-		//save all the interaction
+		//save all the interaction responses to visitor session collection
 		BasicDBObject query = new BasicDBObject("visitorId", this.visitorId);
+		
+		DBObject visitorInfo = Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME).findOne(query);
 		
 		DBCursor allQuestions = Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).find(query);
 		
 		BasicDBObject objectToSave = new BasicDBObject("visitorId", this.visitorId).append("sessionCompletedOn",new Date());
+		objectToSave.append("selectedChallenge", visitorInfo.get("selectedChallenge"));
 		BasicDBList questions = new BasicDBList();
-		
-		//append all facets provided
-		MultivaluedMap<String, String> additionalParams = new MultivaluedHashMap<String, String>();
 		
 		
 		while(allQuestions.hasNext()){
 			DBObject question = allQuestions.next();
-			question.removeField("visitorId");
+			question.removeField("visitorId"); //remove visitor id from the object because it is already present in the parent object
 			questions.add(question);
 		}
 		

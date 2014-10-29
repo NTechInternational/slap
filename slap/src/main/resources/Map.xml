@@ -21,7 +21,10 @@
 	<response>
 	    <documentNode>/response/result/doc</documentNode>
 	   <mappings>
-	     <fieldName source="BusinessModel_ss" target="businessModel" />
+	     <fieldName source="BusinessModel_ss" target="businessmodel" />
+	     <fieldName source="Goal_ss" target="goal" />
+	     <fieldName source="Motivation_ss" target="motivation" />
+	     <fieldName source="RewardType_ss" target="rewardtype" />
 	     <fieldName source="id" target="id" />
 	     <fieldName source="source" target="sourcetype" /> <!-- values would be questions/item note:item is same as challenge-->
 	     <fieldName source="question_t" target="question" />
