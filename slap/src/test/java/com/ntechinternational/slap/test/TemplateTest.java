@@ -80,4 +80,22 @@ public class TemplateTest {
 		assertTrue(output.contains("&Country"));
 		assertFalse(output.contains("&Name"));
 	}
+	
+	/**
+	 * This test checks that the key value pair from a string is converted to a map by the 
+	 * utility class
+	 */
+	@Test
+	public void givenAKeyValueListString_ItIsConvertedToMap(){
+		String keyValueList = "Name:Ramesh,City: Kathmandu,School: Higher Secondary School Of Nepal, Grade: 10";
+		
+		Map<String, String> keyValuePairs = Template.getVariablesFromString(keyValueList);
+		
+		assertEquals("Ramesh", keyValuePairs.get("Name"));
+		assertEquals("Kathmandu", keyValuePairs.get("City"));
+		assertEquals("Higher Secondary School Of Nepal", keyValuePairs.get("School"));
+		assertEquals("10", keyValuePairs.get("Grade"));
+		
+		assertNull(keyValuePairs.get("Random"));
+	}
 }

@@ -439,7 +439,7 @@ public class SlapRestImpl {
 		if(challenges.size() == 1){
 			Template substitute = new Template(challenges.get(0).get("itemtemplate").toString());
 			
-			substitute.process(respondedVariables, VariableUtility.getVariablesFromString(challenges.get(0).get("variables").toString()));
+			substitute.process(respondedVariables, Template.getVariablesFromString(challenges.get(0).get("variables").toString()));
 			
 			//check if any variable value is missing
 			
@@ -509,7 +509,7 @@ public class SlapRestImpl {
 		for(Map<String, Object> challenge : challenges){
 			challenge.put("itemtemplate", 
 					new Template(challenge.get("itemtemplate").toString())
-						.process(respondedValues, VariableUtility.getVariablesFromString(challenge.get("variables").toString())));
+						.process(respondedValues, Template.getVariablesFromString(challenge.get("variables").toString())));
 						//just providing
 		}
 		
