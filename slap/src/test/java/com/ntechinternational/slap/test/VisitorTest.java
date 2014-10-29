@@ -18,7 +18,9 @@ public class VisitorTest {
 		//TODO: use test monogodb instead of real for test cases, because 
 		try {
 			Visitor visitor = Visitor.getVisitorFor(VISITOR_USER_ID);
-			assertNotNull(visitor);
+			assertNull(visitor);
+			
+			visitor = Visitor.createVisitorFor(VISITOR_USER_ID);
 			assertNotNull(visitor.visitorId);
 			assertSame(visitor.userId, VISITOR_USER_ID);
 			
