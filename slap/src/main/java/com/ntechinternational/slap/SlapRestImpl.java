@@ -30,6 +30,7 @@ import com.mongodb.DBObject;
 @Path("/rest")
 public class SlapRestImpl {
 	
+	private static final String PARAM_ITEM_ID = "itemId";
 	private static final String TYPE_PARAM = "type";
 	private static final String API_VERSION_PARAM = "apiversion";
 	private static final String SOURCE_PARAM = "sourcetype";
@@ -143,7 +144,7 @@ public class SlapRestImpl {
 		
 		switch(interactionType){
 		case Select:
-			selectInteraction(response, queryParams, configDetails);
+			selectInteraction(response, queryParams, configDetails, queryParams.getFirst(PARAM_ITEM_ID));
 			break;
 		case Submit:
 			submitInteraction(response, queryParams, configDetails);
@@ -156,38 +157,7 @@ public class SlapRestImpl {
 			break;
 		
 		default:
-			//TODO: send default param as BusinessModel__s:All
-			
-			BasicDBObject query = new BasicDBObject("visitorId", visitorId);
-			DBCursor allQuestions = Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).find(query);
-			
-			//append all facets provided
-			MultivaluedMap<String, String> additionalParams = new MultivaluedHashMap<String, String>();
-			
-			
-			while(allQuestions.hasNext()){
-				DBObject question = allQuestions.next();
-				BasicDBList facets = (BasicDBList)question.get("facets");
-				if(facets != null){
-					for(Object facet: facets){
-						DBObject f = (DBObject)facet;
-						String key = f.keySet().iterator().next();
-						String lowercaseKey = key.toLowerCase();
-						String backendKey = configDetails.requestMappings.get(lowercaseKey);
-						if(backendKey == null)
-							backendKey = key;
-						additionalParams.add("fq", backendKey + ":" + f.get(key) );
-					}
-				}
-			}
-			
-			if(additionalParams.size() == 0){
-				additionalParams.putSingle("fq", configDetails.requestMappings.get("businessmodel") + ":All");
-			}
-			
-			additionalParams.putSingle("rows", "1");
-			
-			getResponseFromServer(response, queryParams, configDetails, additionalParams, null, new HashMap<String, String>());
+			defaultInteraction(response, queryParams, configDetails);
 			break;
 		}
 		
@@ -195,6 +165,54 @@ public class SlapRestImpl {
 
 	}
 	
+	private void defaultInteraction(SlapResponse response,
+			MultivaluedMap<String, String> queryParams,
+			ConfigurationMap configDetails) throws Exception {
+		BasicDBObject query = new BasicDBObject("visitorId", visitorId);
+		
+		DBObject visitorInfo = Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME).findOne(query);
+		DBObject previousChallenge = (DBObject)visitorInfo.get("selectedChallenge");
+		
+		if(previousChallenge != null && previousChallenge.get("itemId") != null){
+			String previouslySelectedItemId = (String) previousChallenge.get("itemId");
+			selectInteraction(response, queryParams, configDetails, previouslySelectedItemId);
+			return;
+		}
+		
+		DBCursor allQuestions = Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).find(query);
+		
+		
+		
+		//append all facets provided
+		MultivaluedMap<String, String> additionalParams = new MultivaluedHashMap<String, String>();
+		
+		
+		while(allQuestions.hasNext()){
+			DBObject question = allQuestions.next();
+			BasicDBList facets = (BasicDBList)question.get("facets");
+			if(facets != null){
+				for(Object facet: facets){
+					DBObject f = (DBObject)facet;
+					String key = f.keySet().iterator().next();
+					String lowercaseKey = key.toLowerCase();
+					String backendKey = configDetails.requestMappings.get(lowercaseKey);
+					if(backendKey == null)
+						backendKey = key;
+					additionalParams.add("fq", backendKey + ":" + f.get(key) );
+				}
+			}
+		}
+		
+		if(additionalParams.size() == 0){
+			additionalParams.putSingle("fq", configDetails.requestMappings.get("businessmodel") + ":All");
+		}
+		
+		additionalParams.putSingle("rows", "1");
+		
+		getResponseFromServer(response, queryParams, configDetails, additionalParams, null, new HashMap<String, String>());
+		
+	}
+
 	private void doneInteraction(SlapResponse response,
 			MultivaluedMap<String, String> queryParams,
 			ConfigurationMap configDetails) throws UnknownHostException {
@@ -235,26 +253,24 @@ public class SlapRestImpl {
 		
 		Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).remove(visitorQuery);
 		
-		getResponseFromServer(response, queryParams, configDetails, null, null, new HashMap<String, String>());
-		
-		
 		BasicDBObject updateInfo = new BasicDBObject("$set", new BasicDBObject("selectedChallenge", 
 										null ));
 		
 		Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME).update(visitorQuery, updateInfo);
 		
+		defaultInteraction(response, queryParams, configDetails);
+		
 	}
 
 	private void selectInteraction(SlapResponse response,
 			MultivaluedMap<String, String> queryParams,
-			ConfigurationMap configDetails) throws Exception {
+			ConfigurationMap configDetails, String itemId) throws Exception {
 
-		String itemId = queryParams.getFirst("itemid");
 		
 		BasicDBObject visitorToUpdate = new BasicDBObject("visitorId", visitorId);
 		BasicDBObject updateInfo = new BasicDBObject("$set", new BasicDBObject("selectedChallenge", 
-										new BasicDBObject("itemId", itemId)));
-		//TODO: store the challenge too.
+										new BasicDBObject(PARAM_ITEM_ID, itemId)));
+		
 		
 		Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME).update(visitorToUpdate, updateInfo);
 		
