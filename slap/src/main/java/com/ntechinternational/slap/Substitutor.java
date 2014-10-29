@@ -129,6 +129,7 @@ private StringBuilder parseConvertSentence(BreakIterator bi, String source) {
 		retStr= removeMultipleDot(retStr);
 		return retStr;
 	}
+	
 	private String convertUpperCase(String str)
 	{
 		StringBuilder sb = new StringBuilder(str); 
@@ -139,17 +140,19 @@ private StringBuilder parseConvertSentence(BreakIterator bi, String source) {
 			sb.replace(matcher.end() - 1, matcher.end(), matcher.group(2).toUpperCase());
 		return sb.toString();
 	}
+	
 	private String removeChar(String str)
 	{
 		StringBuilder sb = new StringBuilder(str); 
 
-		Pattern pattern = Pattern.compile("(\\(|\\)|\\[|\\])");
+		Pattern pattern = Pattern.compile("(\\[|\\])");
 		Matcher matcher = pattern.matcher(sb);
 		while (matcher.find())
 			sb.replace(matcher.end() - 1, matcher.end(), "#");
 		
 		return sb.toString().trim().replaceAll("#","");
 	}
+	
 	private String removeMultipleDot(String str)
 	{
 		StringBuilder buffy = new StringBuilder(str);
