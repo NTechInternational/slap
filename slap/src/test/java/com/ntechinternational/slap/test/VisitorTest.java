@@ -15,7 +15,7 @@ public class VisitorTest {
 
 	@Test
 	public void givenUnknownUserId_VisitorIdIsReturned(){
-		//TODO: use test monogodb instead of real for test cases, because 
+		//TODO: use test monogodb instead of real for test cases 
 		try {
 			Visitor visitor = Visitor.getVisitorFor(VISITOR_USER_ID);
 			assertNull(visitor);

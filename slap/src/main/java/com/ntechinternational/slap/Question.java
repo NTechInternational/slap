@@ -21,7 +21,7 @@ public class Question {
 	 */
 	public static void storeQuestion(long visitorId, MultivaluedMap<String, String> queryParams) throws UnknownHostException{
 		
-		System.out.println("Updating question information");
+		LogUtil.debug("Updating question information");
 		
 		DBCollection questions = Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME);
 		BasicDBObject updateQuery = new BasicDBObject();
@@ -30,7 +30,7 @@ public class Question {
 	    BasicDBList allParams = new BasicDBList();
 	    
 	    if(parseResponseStringAndGetResponses(allParams, queryParams)){
-	    	System.out.println(allParams);
+	    	LogUtil.trace(allParams);
 	    	
 	    	for(int i = 0; i < allParams.size(); i++){
 			    BasicDBObject updateCommand = new BasicDBObject();
@@ -38,7 +38,7 @@ public class Question {
 			    //TODO: insert all the question array in go using $pushAll or equivalent
 			    WriteResult result = questions.update( updateQuery, updateCommand, true, true );
 			    //questions.find()
-			    System.out.println("Write result: " + result);
+			    LogUtil.debug("Write result: " + result);
 	    	}
 		    
 	    }

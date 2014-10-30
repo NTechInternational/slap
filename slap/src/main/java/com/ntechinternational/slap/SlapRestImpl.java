@@ -1,16 +1,12 @@
 package com.ntechinternational.slap;
 
 import java.net.UnknownHostException;
-import java.text.BreakIterator;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.text.BreakIterator;
-import java.util.Locale;
+import org.apache.logging.log4j.LogManager;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -52,7 +48,9 @@ public class SlapRestImpl {
 	@Path("processrequest")
 	public SlapResponse processRequest(@Context UriInfo uriInfo){
 		
-		SlapResponse processedResponse = new SlapResponse();;
+		SlapResponse processedResponse = new SlapResponse();
+		
+		LogUtil.debug("Received a process request");
 		
 		//if valid visitor id has been provided
 		//TODO: check if the test is valid, and meets the requirements
@@ -72,6 +70,8 @@ public class SlapRestImpl {
 				apiVersion = 1; //set to current version level
 			}
 			
+			LogUtil.trace("Using API Version" + apiVersion);
+			
 			if(apiVersion == 1){
 				if(visitorId != null && !visitorId.isEmpty()){
 					processedResponse = processRequest(queryParams);
@@ -81,11 +81,12 @@ public class SlapRestImpl {
 				}
 			}
 			else{
+				LogUtil.error("Unsupported api version " + apiVersion + " requested");
 				processedResponse.errorDescription = UNSUPPORTED_API_VERSION; 
 			}
 		}
 		catch(Exception ex){
-			System.err.println("An exception was occurred " + ex + " on ");
+			LogUtil.error("An exception was occurred " + ex + " on ");
 			ex.printStackTrace(System.err);
 			processedResponse.errorDescription = ex.getMessage();
 		}
@@ -104,9 +105,10 @@ public class SlapRestImpl {
 		String mapXMLFile = System.getenv("SLAP_MAP_XML_FILE");
 		mapXMLFile = mapXMLFile == null || mapXMLFile.isEmpty() ? MAP_FILENAME : mapXMLFile;
 		
-		System.out.println("Loading configuration from " + mapXMLFile);
+		LogManager.getRootLogger().debug("Loading configuration from " + mapXMLFile);
+		
 		ConfigurationMap configDetails = ConfigurationMap.getConfig(mapXMLFile);
-		System.out.println("Connecting to " + configDetails.mongoAddress + " @ " + configDetails.mongoPort);
+		LogUtil.debug("Connecting to " + configDetails.mongoAddress + " @ " + configDetails.mongoPort);
 		Database.initializeMongoAddress(configDetails.mongoAddress, configDetails.mongoPort);
 
 		
@@ -319,7 +321,10 @@ public class SlapRestImpl {
 			questionParams.putSingle(SOURCE_PARAM, "questions");
 			String questionResponse = new QueryManager().query(visitorId, questionParams, configDetails, configDetails.questionPath, additionalParamsWithDefaults);
 			
-			response.questions.addAll(XmlParser.transformDoc(questionResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|questions"));
+
+			List<Map<String, Object>> questions = XmlParser.transformDoc(questionResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|questions");
+			changeSchemaForAnswers(questions);
+			response.questions.addAll(questions);
 			
 		}
 	}
@@ -376,7 +381,7 @@ public class SlapRestImpl {
 				}
 			}
 			
-			System.err.println(additionalParams);
+			LogUtil.trace("Additional Param to be sent to server: " + additionalParams);
 			
 			BasicDBList variables = (BasicDBList)question.get("variables");
 			if(variables != null){
@@ -414,7 +419,9 @@ public class SlapRestImpl {
 				questionParams.putSingle(SOURCE_PARAM, "questions");
 				String questionResponse = new QueryManager().query(visitorId, questionParams, configDetails, configDetails.questionPath, additionalParamsWithDefaultsOnly);
 				
-				response.questions.addAll(XmlParser.transformDoc(questionResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|questions"));
+				List<Map<String, Object>> questions = XmlParser.transformDoc(questionResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|questions");
+				changeSchemaForAnswers(questions);
+				response.questions.addAll(questions);
 				
 			}
 		}
@@ -434,7 +441,7 @@ public class SlapRestImpl {
 		paramsToAdd.putSingle("fq", "id:" + itemId);
 		String challengeResponse = new QueryManager().query(visitorId, queryParams, configDetails, configDetails.challengePath, paramsToAdd);
 		
-		System.out.println("Challenge Response: " + challengeResponse);
+		LogUtil.trace("Challenge Response: " + challengeResponse);
 		List<Map<String, Object>> challenges = XmlParser.transformDoc(challengeResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|challenge");
 		if(challenges.size() == 1){
 			Template substitute = new Template(challenges.get(0).get("itemtemplate").toString());
@@ -456,7 +463,7 @@ public class SlapRestImpl {
 				}
 				variableQuery.append(")");
 				
-				System.out.println("Variable query : "  + variableQuery);
+				LogUtil.trace("Variable query : "  + variableQuery);
 				
 				missingParams.putSingle("fq", variableQuery.toString());
 				
@@ -522,10 +529,8 @@ public class SlapRestImpl {
 	 * transforms the question's answer from pipe separated value to JSON objects
 	 */
 	private void changeSchemaForAnswers(List<Map<String, Object>> questions) {
-		
-		
 		for(Map<String,Object> question : questions){
-			System.out.println(question);
+			
 			String answer = question.get("answers").toString();
 			List<Map<String, String>> allOptions = new ArrayList<Map<String, String>>();
 			String[] options = answer.split("\\|"); // all options are separated by | symbol

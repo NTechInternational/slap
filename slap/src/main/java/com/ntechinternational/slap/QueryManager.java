@@ -41,7 +41,7 @@ public class QueryManager {
 		for(int index = 0; index < config.requestParams.size(); index++){
 			ConfigurationMap.RequestParam requestParam = config.requestParams.get(index);
 			
-			System.out.println("In the loop " + requestParam.paramName + " with default value " + requestParam.paramValue);
+			LogUtil.trace("In the loop " + requestParam.paramName + " with default value " + requestParam.paramValue);
 			
 			//Lets map the JavaScript parameter to name to backend server param name as defined in the mapping
 			//if necessary
@@ -99,7 +99,7 @@ public class QueryManager {
 		}
 		//includes all the results
 		target = target.queryParam("q", "*:*");
-		System.out.println("Querying " + target.getUri());
+		LogUtil.debug("Querying " + target.getUri());
 		
 		Response response = target.request(DEFAULT_MEDIATYPE).get(); //set the accepted media type to one defined
 		

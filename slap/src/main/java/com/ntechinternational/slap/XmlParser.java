@@ -44,7 +44,7 @@ public class XmlParser {
 	    
 		    docNodes = (NodeList)expr.evaluate(doc, XPathConstants.NODESET);
 		    
-		    System.out.println("Number of document nodes found: " + docNodes.getLength());
+		    LogUtil.debug("Number of document nodes found: " + docNodes.getLength());
 		    
 		    for(int index = 0; index < docNodes.getLength(); index++ ){
 		    	Map<String, Object> mappedObject = transformNodeToMap(docNodes.item(index),mappingDefinition, condition);
@@ -56,8 +56,8 @@ public class XmlParser {
 		catch(Exception ex){
 			//ignoring exceptions for now
 			//TODO: handle exceptions properly
-			System.err.println(ex.getMessage());
-			System.err.println(ex.getStackTrace());
+			LogUtil.error(ex.getMessage());
+			LogUtil.error(ex.getStackTrace());
 		}
 		
 		return objects;

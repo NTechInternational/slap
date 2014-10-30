@@ -63,8 +63,8 @@ public class ConfigurationMap {
 		if(singletonMap == null){
 			singletonMap = new ConfigurationMap();
 			
-			try{ 
-				System.out.println("Loading map file from " + mapFileName);
+			try{
+				LogUtil.debug("Loading map file from " + mapFileName);
 				
 				XMLConfiguration config = new XMLConfiguration(mapFileName); //load the configuration file
 				
@@ -74,10 +74,10 @@ public class ConfigurationMap {
 				singletonMap.requestURL = config.getString("request.url");
 				singletonMap.questionPath = config.getString("request.questionPath");
 				
-				System.out.println(config.getString("request.questionpath"));
+				LogUtil.trace("Detected Question Path:" + config.getString("request.questionpath"));
 				singletonMap.challengePath = config.getString("request.challengePath");
 				
-				System.out.println(config.getString("request.challengepath"));
+				LogUtil.trace("Detected Challenge Path:" + config.getString("request.challengepath"));
 				
 				//get all the param required for request
 				readRequestParam(config.configurationsAt("request.requiredParam.param"), true);
@@ -105,7 +105,7 @@ public class ConfigurationMap {
 					paramValue = conf.getString("[@value]"), //get the value from the passed list
 					paramType = conf.getString("[@type]");
 			
-			System.out.println("Found param " + paramName);
+			LogUtil.trace("Found param " + paramName);
 			
 			RequestParam param = new ConfigurationMap.RequestParam(paramName, paramValue, isRequired, paramType);
 			
