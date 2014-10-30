@@ -1,6 +1,7 @@
 language: java
-before_script:
+before_install:
   -cd slap
+  
 install: mvn clean package -DskipTests=true
 
 script: mvn test
