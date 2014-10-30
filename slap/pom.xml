@@ -81,6 +81,8 @@
     </dependency>
   </dependencies>
   <build>
+      <sourceDirectory>src/main/*</sourceDirectory>
+      <testSourceDirectory>src/test/*</testSourceDirectory>
     <finalName>slap</finalName>
   </build>
 </project>
