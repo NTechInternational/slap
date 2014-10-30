@@ -1,0 +1,5 @@
+language: java
+before_script: ls
+install: mvn clean package -DskipTests=true
+
+script: mvn test

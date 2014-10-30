@@ -30,6 +30,7 @@ import com.mongodb.DBObject;
 @Path("/rest")
 public class SlapRestImpl {
 	
+	private static final String PARAM_ITEM_ID = "itemId";
 	private static final String TYPE_PARAM = "type";
 	private static final String API_VERSION_PARAM = "apiversion";
 	private static final String SOURCE_PARAM = "sourcetype";
@@ -143,7 +144,7 @@ public class SlapRestImpl {
 		
 		switch(interactionType){
 		case Select:
-			selectInteraction(response, queryParams, configDetails);
+			selectInteraction(response, queryParams, configDetails, queryParams.getFirst(PARAM_ITEM_ID));
 			break;
 		case Submit:
 			submitInteraction(response, queryParams, configDetails);
@@ -156,36 +157,7 @@ public class SlapRestImpl {
 			break;
 		
 		default:
-			//TODO: send default param as BusinessModel__s:All
-			
-			BasicDBObject query = new BasicDBObject("visitorId", visitorId);
-			DBCursor allQuestions = Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).find(query);
-			
-			//append all facets provided
-			MultivaluedMap<String, String> additionalParams = new MultivaluedHashMap<String, String>();
-			
-			
-			while(allQuestions.hasNext()){
-				DBObject question = allQuestions.next();
-				BasicDBList facets = (BasicDBList)question.get("facets");
-				if(facets != null){
-					for(Object facet: facets){
-						DBObject f = (DBObject)facet;
-						String key = f.keySet().iterator().next();
-						String lowercaseKey = key.toLowerCase();
-						String backendKey = configDetails.requestMappings.get(lowercaseKey);
-						if(backendKey == null)
-							backendKey = key;
-						additionalParams.add("fq", backendKey + ":" + f.get(key) );
-					}
-				}
-			}
-			
-			if(additionalParams.size() == 0){
-				additionalParams.putSingle("fq", configDetails.requestMappings.get("businessmodel") + ":All");
-			}
-			
-			getResponseFromServer(response, queryParams, configDetails, additionalParams, null, new HashMap<String, String>());
+			defaultInteraction(response, queryParams, configDetails);
 			break;
 		}
 		
@@ -193,17 +165,23 @@ public class SlapRestImpl {
 
 	}
 	
-	private void doneInteraction(SlapResponse response,
+	private void defaultInteraction(SlapResponse response,
 			MultivaluedMap<String, String> queryParams,
-			ConfigurationMap configDetails) throws UnknownHostException {
+			ConfigurationMap configDetails) throws Exception {
+		BasicDBObject query = new BasicDBObject("visitorId", visitorId);
 		
-		//save all the interaction
-		BasicDBObject query = new BasicDBObject("visitorId", this.visitorId);
+		DBObject visitorInfo = Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME).findOne(query);
+		DBObject previousChallenge = (DBObject)visitorInfo.get("selectedChallenge");
+		
+		if(previousChallenge != null && previousChallenge.get("itemId") != null){
+			String previouslySelectedItemId = (String) previousChallenge.get("itemId");
+			selectInteraction(response, queryParams, configDetails, previouslySelectedItemId);
+			return;
+		}
 		
 		DBCursor allQuestions = Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).find(query);
 		
-		BasicDBObject objectToSave = new BasicDBObject("visitorId", this.visitorId).append("sessionCompletedOn",new Date());
-		BasicDBList questions = new BasicDBList();
+		
 		
 		//append all facets provided
 		MultivaluedMap<String, String> additionalParams = new MultivaluedHashMap<String, String>();
@@ -211,7 +189,58 @@ public class SlapRestImpl {
 		
 		while(allQuestions.hasNext()){
 			DBObject question = allQuestions.next();
-			question.removeField("visitorId");
+			BasicDBList facets = (BasicDBList)question.get("facets");
+			if(facets != null){
+				for(Object facet: facets){
+					DBObject f = (DBObject)facet;
+					String key = f.keySet().iterator().next();
+					String lowercaseKey = key.toLowerCase();
+					String backendKey = configDetails.requestMappings.get(lowercaseKey);
+					if(backendKey == null)
+						backendKey = key;
+					additionalParams.add("fq", backendKey + ":" + f.get(key) );
+				}
+			}
+		}
+		
+		if(additionalParams.size() == 0){
+			additionalParams.putSingle("fq", configDetails.requestMappings.get("businessmodel") + ":All");
+		}
+		
+		additionalParams.putSingle("rows", "1");
+		
+		getResponseFromServer(response, queryParams, configDetails, additionalParams, null, new HashMap<String, String>());
+		
+	}
+
+	private void doneInteraction(SlapResponse response,
+			MultivaluedMap<String, String> queryParams,
+			ConfigurationMap configDetails) throws Exception {
+
+		if(queryParams.containsKey("qid") && (queryParams.containsKey("var") || queryParams.containsKey("facet"))){
+			//this is similar to submit interaction so save the submitted values
+			submitInteraction(response, queryParams, configDetails);
+		}
+		else{
+			defaultInteraction(response, queryParams, configDetails);
+		}
+
+		
+		//save all the interaction responses to visitor session collection
+		BasicDBObject query = new BasicDBObject("visitorId", this.visitorId);
+		
+		DBObject visitorInfo = Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME).findOne(query);
+		
+		DBCursor allQuestions = Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).find(query);
+		
+		BasicDBObject objectToSave = new BasicDBObject("visitorId", this.visitorId).append("sessionCompletedOn",new Date());
+		objectToSave.append("selectedChallenge", visitorInfo.get("selectedChallenge"));
+		BasicDBList questions = new BasicDBList();
+		
+		
+		while(allQuestions.hasNext()){
+			DBObject question = allQuestions.next();
+			question.removeField("visitorId"); //remove visitor id from the object because it is already present in the parent object
 			questions.add(question);
 		}
 		
@@ -233,20 +262,24 @@ public class SlapRestImpl {
 		
 		Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).remove(visitorQuery);
 		
-		getResponseFromServer(response, queryParams, configDetails, null, null, new HashMap<String, String>());
+		BasicDBObject updateInfo = new BasicDBObject("$set", new BasicDBObject("selectedChallenge", 
+										null ));
+		
+		Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME).update(visitorQuery, updateInfo);
+		
+		defaultInteraction(response, queryParams, configDetails);
 		
 	}
 
 	private void selectInteraction(SlapResponse response,
 			MultivaluedMap<String, String> queryParams,
-			ConfigurationMap configDetails) throws Exception {
+			ConfigurationMap configDetails, String itemId) throws Exception {
 
-		String itemId = queryParams.getFirst("itemid");
 		
 		BasicDBObject visitorToUpdate = new BasicDBObject("visitorId", visitorId);
 		BasicDBObject updateInfo = new BasicDBObject("$set", new BasicDBObject("selectedChallenge", 
-										new BasicDBObject("itemId", itemId)));
-		//TODO: store the challenge too.
+										new BasicDBObject(PARAM_ITEM_ID, itemId)));
+		
 		
 		Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME).update(visitorToUpdate, updateInfo);
 		
@@ -297,7 +330,7 @@ public class SlapRestImpl {
 	 */
 	private void submitInteraction(SlapResponse response, MultivaluedMap<String, String> queryParams, ConfigurationMap configDetails) throws Exception{
 		String questionId = queryParams.getFirst("qid");
-		String itemId = queryParams.getFirst("itemid");
+		String itemId = queryParams.getFirst(PARAM_ITEM_ID);
 		
 		if(itemId == null){
 			BasicDBObject visitorToUpdate = new BasicDBObject("visitorId", visitorId);
@@ -406,7 +439,7 @@ public class SlapRestImpl {
 		if(challenges.size() == 1){
 			Template substitute = new Template(challenges.get(0).get("itemtemplate").toString());
 			
-			substitute.process(respondedVariables, VariableUtility.getVariablesFromString(challenges.get(0).get("variables").toString()));
+			substitute.process(respondedVariables, Template.getVariablesFromString(challenges.get(0).get("variables").toString()));
 			
 			//check if any variable value is missing
 			
@@ -476,11 +509,11 @@ public class SlapRestImpl {
 		for(Map<String, Object> challenge : challenges){
 			challenge.put("itemtemplate", 
 					new Template(challenge.get("itemtemplate").toString())
-						.process(respondedValues, VariableUtility.getVariablesFromString(challenge.get("variables").toString())));
+						.process(respondedValues, Template.getVariablesFromString(challenge.get("variables").toString())));
 						//just providing
 		}
 		
-		response.items = substituteVariables(challenges);
+		response.items = new Substitutor().substituteVariables(challenges, visitorId);
 		response.visitorId = visitorId;
 		
 	}
@@ -631,145 +664,4 @@ public class SlapRestImpl {
 		return null;
 	}*/
 
-	/**
-	 * Substitutes all the variables in the challenge and returns the new challenge
-	 * @return
-	 * @throws UnknownHostException 
-	 */
-	private List<Map<String, Object>> substituteVariables(List<Map<String, Object>> items) throws UnknownHostException{
-		BasicDBObject query = new BasicDBObject("visitorId", visitorId);
-		DBCursor cursor = Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).find(query);
-		boolean wasReplaced = false;
-		
-		List<StringBuilder> allItemTemplates = new ArrayList<StringBuilder>();
-		for(Map<String, Object> item : items){
-			String itemTemplate = (String) item.get("itemtemplate");
-			
-			allItemTemplates.add(new StringBuilder(itemTemplate));
-		}
-		
-		
-		
-		
-		//find all the responded variables and use them to replace all text in items
-		while(cursor.hasNext()){
-			wasReplaced = true;
-			DBObject storedResponse = cursor.next(); //get the response for a question
-			BasicDBList variables = (BasicDBList)storedResponse.get("variables");
-			
-			for(int index = 0; index < variables.size(); index++){
-				DBObject variable = (DBObject)variables.get(index);
-				String key = variable.keySet().iterator().next();
-				String value = (String)variable.get(key);
-				
-				key = "&" + key;
-				
-				for(StringBuilder itemTemplate : allItemTemplates){
-					
-					replaceAll(itemTemplate, key, value);
-					System.out.println(itemTemplate);
-					
-					// sentence parsing and convert first letter to uppercase
-					BreakIterator boundary = BreakIterator.getSentenceInstance(Locale.US);
-				    String source =itemTemplate.toString();
-				    itemTemplate.setLength(0);
-					itemTemplate.append(parseConvertSentence(boundary, source));
-					
-				}
-				
-			}
-		}
-		
-		//rewrite the string in the param object
-		if(wasReplaced){
-			int index = 0;
-			for(Map<String, Object> item : items){
-				
-				item.put("itemtemplate", allItemTemplates.get(index).toString());
-				
-				index++;
-			}
-		}
-		
-		return items;
-	}
-	
-	private void replaceAll(StringBuilder builder, String from, String to)
-	{
-	    int index = builder.indexOf(from);
-	    while (index != -1)
-	    {
-	        builder.replace(index, index + from.length(), to);
-	        index += to.length(); // Move to the end of the replacement
-	        index = builder.indexOf(from, index);
-	    }
-	}
-
-	private StringBuilder parseConvertSentence(BreakIterator bi, String source) {
-		
-		StringBuilder sb = new StringBuilder();
-		bi.setText(source);
-
-		int lastIndex = bi.first();
-		while (lastIndex != BreakIterator.DONE) {
-			int firstIndex = lastIndex;
-			lastIndex = bi.next();
-
-			if (lastIndex != BreakIterator.DONE) {
-				String sentence = source.substring(firstIndex, lastIndex);
-				
-				sb.append(applySentenceRules(sentence));
-				sb.append(" ");
-				
-			}
-		}
-		int len = sb.length();
-		if (sb.lastIndexOf(" ")==len-1)
-			sb.setLength(len-1);
-		
-		return sb;
-	}
-
-	private String applySentenceRules(String sentence)
-	{
-		String retStr = removeChar(convertUpperCase(sentence));
-		//remove multiple whitespace
-		retStr=retStr.replaceAll("(\\s)\\1","");
-		//remove dot
-		retStr= removeMultipleDot(retStr);
-		return retStr;
-	}
-	private String convertUpperCase(String str)
-	{
-		StringBuilder sb = new StringBuilder(str); 
-
-		Pattern pattern = Pattern.compile("(^|\\.|!|\\?)\\s*(\\w)");
-		Matcher matcher = pattern.matcher(sb);
-		while (matcher.find())
-			sb.replace(matcher.end() - 1, matcher.end(), matcher.group(2).toUpperCase());
-		return sb.toString();
-	}
-	private String removeChar(String str)
-	{
-		StringBuilder sb = new StringBuilder(str); 
-
-		Pattern pattern = Pattern.compile("(\\[|\\])");
-		Matcher matcher = pattern.matcher(sb);
-		while (matcher.find())
-			sb.replace(matcher.end() - 1, matcher.end(), "#");
-		
-		return sb.toString().trim().replaceAll("#","");
-	}
-	private String removeMultipleDot(String str)
-	{
-		StringBuilder buffy = new StringBuilder(str);
-		
-		Pattern pattern = Pattern.compile("(\\.\\s\\.{1,2})");
-		Matcher matcher = pattern.matcher(buffy);
-		
-		while (matcher.find())
-			buffy.replace(matcher.end() - 1, matcher.end(), "#");
-		
-		return buffy.toString().trim().replaceAll("#","");
-	}
 }

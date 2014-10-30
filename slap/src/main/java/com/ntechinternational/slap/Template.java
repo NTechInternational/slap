@@ -1,6 +1,7 @@
 package com.ntechinternational.slap;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
@@ -148,6 +149,32 @@ public class Template{
 			this.startIndex = startIndex;
 			this.endIndex = endIndex;
 		}
+	}
+	
+	
+	/************* Static Methods/Helpers **************/
+	
+	/**
+	 * this function extracts a list of key value pairs from a string
+	 * The string must contain Key#1:Value#1,Key#2:Value#2,...,Key#N:Value#N
+	 * @param variableList the string containing the list of key-value pairs
+	 * @return returns a Map with the key value pairs
+	 */
+	public static Map<String, String>getVariablesFromString(String variableList){
+		
+		Map<String, String> variableMap = new HashMap<String, String>();
+		
+		String[] values = variableList.split(","); //list has key value pairs separated by comma (,)
+		for(int index = 0; index < values.length; index++){
+			String[] kvs = values[index].split(":"); //each key value pair is separated by colon(:)
+			
+			if(kvs.length == 2){
+				variableMap.put(kvs[0].trim(), kvs[1].trim());
+			}
+		}
+		
+		return variableMap;
+		
 	}
 	
 }
