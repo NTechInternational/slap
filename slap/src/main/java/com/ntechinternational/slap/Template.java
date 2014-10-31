@@ -86,7 +86,7 @@ public class Template{
 				
 				output.replace(match.startIndex, match.endIndex, toReplaceWith);
 				
-				System.out.println("Found opt param " + optParam);
+				LogUtil.trace("Found opt param " + optParam);
 			}
 			else{
 				//replace the variables in string with value for simple variable
@@ -124,7 +124,7 @@ public class Template{
 			}
 			
 			if(value != null){
-				System.out.println("Replacement done for " + variableName); 
+				LogUtil.trace("Replacement done for " + variableName); 
 				output.replace(match.startIndex, match.endIndex, value);
 				replaced = true;
 				variablesWithValue.add(variableName);

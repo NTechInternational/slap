@@ -54,7 +54,7 @@ public class Substitutor {
 					
 					postProcessTemplate(itemTemplate);
 					
-					System.out.println(itemTemplate);
+					LogUtil.debug("Processed Item Template: " + itemTemplate);
 					
 				}
 				
