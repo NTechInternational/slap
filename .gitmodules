@@ -1,0 +1,3 @@
+[submodule "ThirdPartyRefs/3Scale_WSAPI_JAVA"]
+	path = ThirdPartyRefs/3Scale_WSAPI_JAVA
+	url = https://github.com/3scale/3scale_ws_api_for_java.git
