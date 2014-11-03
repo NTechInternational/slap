@@ -1,23 +1,36 @@
 package com.ntechinternational.slap;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.logging.log4j.LogManager;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Application;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriInfo;
+import javax.ws.rs.core.Response.StatusType;
 
+import org.apache.logging.log4j.LogManager;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCursor;
@@ -38,25 +51,24 @@ public class SlapRestImpl {
 	enum Interaction { Submit, Select, Done, StartOver, Default };
 	
 	private String visitorId = null;
+	private ConfigurationMap configDetails = null;
 	
 	/**
 	 * This is the main web service method that processes all the various request and provides a response
 	 * @return the string response
 	 */
 	@GET
-	@Produces({MediaType.APPLICATION_JSON})
 	@Path("processrequest")
-	public SlapResponse processRequest(@Context UriInfo uriInfo){
+	public Response processRequest(@Context UriInfo uriInfo){
 		
 		SlapResponse processedResponse = new SlapResponse();
+		final MultivaluedMap<String, String> queryParams = uriInfo.getQueryParameters();
+		String visitorId = ""; //default null value
+		int apiVersion = 0;
 		
 		LogUtil.debug("Received a process request");
 		
 		//if valid visitor id has been provided
-		//TODO: check if the test is valid, and meets the requirements
-		MultivaluedMap<String, String> queryParams = uriInfo.getQueryParameters(); 
-		String visitorId = ""; //default null value
-		int apiVersion = 0;
 		try{
 			visitorId =  queryParams.getFirst(VISITOR_ID);
 			processedResponse.visitorId = visitorId;
@@ -91,8 +103,48 @@ public class SlapRestImpl {
 			processedResponse.errorDescription = ex.getMessage();
 		}
 		
-		return processedResponse;
 		
+		final SlapResponse responseToOutput = processedResponse; //creating a final variable to pass to anonymous inner class
+		// This code serializes the actual response
+		StreamingOutput output = new StreamingOutput() {
+			
+			public void write(OutputStream outputStream) throws IOException,
+					WebApplicationException {
+				
+				ObjectMapper mapper = new ObjectMapper();
+				
+				
+				String callback = queryParams.getFirst("callback");
+				
+				//if pretty param is present prettifies the output
+				if(queryParams.containsKey("pretty"))
+					mapper.enable(SerializationFeature.INDENT_OUTPUT);
+				
+				mapper.configure(JsonGenerator.Feature.AUTO_CLOSE_TARGET, false);
+				
+				//if callback parameter is passed as a URL parameter
+				//A JSONP response callback(output) is called
+				//else a simple JSON object is returned
+				if(callback == null || callback.isEmpty()){
+					mapper.writeValue(outputStream, responseToOutput);
+				}
+				else{
+					outputStream.write( (callback + "(").getBytes());
+					mapper.writeValue(outputStream, responseToOutput);
+					outputStream.write(");".getBytes());
+					outputStream.flush();
+					outputStream.close();
+				}
+				
+			}
+			
+		};
+		
+		
+		
+		String returnType = queryParams.getFirst("callback") != null ? "application/javascript" : MediaType.APPLICATION_JSON;
+
+		return Response.ok(output, returnType).build();
 		
 	}
 
@@ -107,7 +159,7 @@ public class SlapRestImpl {
 		
 		LogManager.getRootLogger().debug("Loading configuration from " + mapXMLFile);
 		
-		ConfigurationMap configDetails = ConfigurationMap.getConfig(mapXMLFile);
+		this.configDetails = ConfigurationMap.getConfig(mapXMLFile);
 		LogUtil.debug("Connecting to " + configDetails.mongoAddress + " @ " + configDetails.mongoPort);
 		Database.initializeMongoAddress(configDetails.mongoAddress, configDetails.mongoPort);
 
@@ -144,6 +196,7 @@ public class SlapRestImpl {
 			}
 		}
 		
+		LogUtil.debug("Selected interaction is " + interactionType);
 		switch(interactionType){
 		case Select:
 			selectInteraction(response, queryParams, configDetails, queryParams.getFirst(PARAM_ITEM_ID));
@@ -170,6 +223,8 @@ public class SlapRestImpl {
 	private void defaultInteraction(SlapResponse response,
 			MultivaluedMap<String, String> queryParams,
 			ConfigurationMap configDetails) throws Exception {
+		
+		
 		BasicDBObject query = new BasicDBObject("visitorId", visitorId);
 		
 		DBObject visitorInfo = Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME).findOne(query);
@@ -668,5 +723,6 @@ public class SlapRestImpl {
 	
 		return null;
 	}*/
+
 
 }

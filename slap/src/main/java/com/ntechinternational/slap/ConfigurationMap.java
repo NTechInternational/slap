@@ -12,6 +12,8 @@ import org.apache.commons.configuration.XMLConfiguration;
 
 
 public class ConfigurationMap {
+	public static final String DEFAULT_MAP_FILE = "Map.xml";
+	
 	public String requestURL;
 	public String backendDocNode;
 	public String questionPath;
@@ -59,11 +61,18 @@ public class ConfigurationMap {
 	//TODO: to change to singleton pattern
 	private static ConfigurationMap singletonMap = null;
 	
+	public static ConfigurationMap getConfig() throws ConfigurationException{
+		return getConfig(DEFAULT_MAP_FILE);
+	}
+	
 	public static synchronized ConfigurationMap getConfig(String mapFileName) throws ConfigurationException{
 		if(singletonMap == null){
 			singletonMap = new ConfigurationMap();
 			
 			try{
+				if(mapFileName == null || mapFileName.isEmpty())
+					mapFileName = DEFAULT_MAP_FILE;
+				
 				LogUtil.debug("Loading map file from " + mapFileName);
 				
 				XMLConfiguration config = new XMLConfiguration(mapFileName); //load the configuration file
