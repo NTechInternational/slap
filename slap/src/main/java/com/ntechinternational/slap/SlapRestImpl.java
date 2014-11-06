@@ -606,7 +606,7 @@ public class SlapRestImpl {
 	/**
 	* wraps a response to jsonp if required
 	*/
-	private Response createResponse(Object objectToWrap){
+	private Response.ResponseBuilder createResponse(Object objectToWrap){
 		final Object objectToOutput = objectToWrap; //creating a final variable to pass to anonymous inner class
 		// This code serializes the actual response
 		StreamingOutput output = new StreamingOutput() {
