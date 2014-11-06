@@ -5,6 +5,7 @@ import static org.junit.Assert.*;
 import java.net.UnknownHostException;
 
 import org.junit.Test;
+import org.junit.Before;
 
 import com.ntechinternational.slap.Visitor;
 
