@@ -106,47 +106,7 @@ public class SlapRestImpl {
 		}
 		
 		
-		final SlapResponse responseToOutput = processedResponse; //creating a final variable to pass to anonymous inner class
-		// This code serializes the actual response
-		StreamingOutput output = new StreamingOutput() {
-			
-			public void write(OutputStream outputStream) throws IOException,
-					WebApplicationException {
-				
-				ObjectMapper mapper = new ObjectMapper();
-				
-				
-				String callback = queryParams.getFirst("callback");
-				
-				//if pretty param is present prettifies the output
-				if(queryParams.containsKey("pretty"))
-					mapper.enable(SerializationFeature.INDENT_OUTPUT);
-				
-				mapper.configure(JsonGenerator.Feature.AUTO_CLOSE_TARGET, false);
-				
-				//if callback parameter is passed as a URL parameter
-				//A JSONP response callback(output) is called
-				//else a simple JSON object is returned
-				if(callback == null || callback.isEmpty()){
-					mapper.writeValue(outputStream, responseToOutput);
-				}
-				else{
-					outputStream.write( (callback + "(").getBytes());
-					mapper.writeValue(outputStream, responseToOutput);
-					outputStream.write(");".getBytes());
-					outputStream.flush();
-					outputStream.close();
-				}
-				
-			}
-			
-		};
-		
-		
-		
-		String returnType = queryParams.getFirst("callback") != null ? "application/javascript" : MediaType.APPLICATION_JSON;
-
-		return Response.ok(output, returnType).build();
+		return createResponse(processedResponse).build();
 		
 	}
 
@@ -624,8 +584,7 @@ public class SlapRestImpl {
 	 */
 	@GET
 	@Path("getvisitorid")
-	@Produces({MediaType.APPLICATION_JSON})
-	public Visitor getVisitorId(@QueryParam(value = "userid") String userId){
+	public Response getVisitorId(@QueryParam(value = "userid") String userId){
 		Visitor visitor = new Visitor();
 		if(userId != null && !userId.isEmpty()){
 			try {
@@ -641,7 +600,54 @@ public class SlapRestImpl {
 			visitor.errorDescription = "Please provide a valid user id";
 		}
 		
-		return visitor;
+		return createResponse(visitor).build;
+	}
+
+	/**
+	* wraps a response to jsonp if required
+	*/
+	private Response createResponse(Object objectToWrap){
+		final Object objectToOutput = objectToWrap; //creating a final variable to pass to anonymous inner class
+		// This code serializes the actual response
+		StreamingOutput output = new StreamingOutput() {
+			
+			public void write(OutputStream outputStream) throws IOException,
+					WebApplicationException {
+				
+				ObjectMapper mapper = new ObjectMapper();
+				
+				
+				String callback = queryParams.getFirst("callback");
+				
+				//if pretty param is present prettifies the output
+				if(queryParams.containsKey("pretty"))
+					mapper.enable(SerializationFeature.INDENT_OUTPUT);
+				
+				mapper.configure(JsonGenerator.Feature.AUTO_CLOSE_TARGET, false);
+				
+				//if callback parameter is passed as a URL parameter
+				//A JSONP response callback(output) is called
+				//else a simple JSON object is returned
+				if(callback == null || callback.isEmpty()){
+					mapper.writeValue(outputStream, objectToOutput);
+				}
+				else{
+					outputStream.write( (callback + "(").getBytes());
+					mapper.writeValue(outputStream, objectToOutput);
+					outputStream.write(");".getBytes());
+					outputStream.flush();
+					outputStream.close();
+				}
+				
+			}
+			
+		};
+		
+		
+		
+		String returnType = queryParams.getFirst("callback") != null ? "application/javascript" : MediaType.APPLICATION_JSON;
+
+		return Response.ok(output, returnType);
 	}
 	
 	
