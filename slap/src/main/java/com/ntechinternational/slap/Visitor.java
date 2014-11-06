@@ -43,6 +43,14 @@ public class Visitor {
 	}
 	
 	/**
+	 * This method is used by test class to remove visitor from db if one exists
+	 */
+	public static void removeVisitorIfExists(String userId) throws UnknownHostException{
+		DBCollection collection = Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME);
+		DBObject visitor = collection.findAndRemove(new BasicDBObject("userId", userId));
+	}
+	
+	/**
 	 * creates a visitor for a given user id
 	 * @param userId
 	 * @return
