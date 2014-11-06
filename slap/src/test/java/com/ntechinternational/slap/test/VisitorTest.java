@@ -12,6 +12,16 @@ import com.ntechinternational.slap.Visitor;
 public class VisitorTest {
 	
 	private static final String VISITOR_USER_ID = "123123123";
+	
+	@Before
+	public void setup(){
+		try{
+			Visitor.removeVisitorIfExists(VISITOR_USER_ID);	
+		}
+		catch(Exception ex){
+			//do nothing
+		}
+	}
 
 	@Test
 	public void givenUnknownUserId_VisitorIdIsReturned(){
