@@ -5,6 +5,7 @@ import static org.junit.Assert.*;
 import java.net.UnknownHostException;
 
 import org.junit.Test;
+import org.junit.Before;
 
 import com.ntechinternational.slap.Visitor;
 
@@ -12,6 +13,16 @@ import com.ntechinternational.slap.Visitor;
 public class VisitorTest {
 	
 	private static final String VISITOR_USER_ID = "123123123";
+	
+	@Before
+	public void setup(){
+		try{
+			Visitor.removeVisitorIfExists(VISITOR_USER_ID);	
+		}
+		catch(Exception ex){
+			//do nothing
+		}
+	}
 
 	@Test
 	public void givenUnknownUserId_VisitorIdIsReturned(){

@@ -1,23 +1,38 @@
 package com.ntechinternational.slap;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.logging.log4j.LogManager;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriInfo;
 
+import org.apache.logging.log4j.LogManager;
+
+import threescale.v3.api.AuthorizeResponse;
+import threescale.v3.api.ParameterMap;
+import threescale.v3.api.ServerError;
+import threescale.v3.api.ServiceApi;
+import threescale.v3.api.impl.ServiceApiDriver;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCursor;
@@ -38,25 +53,24 @@ public class SlapRestImpl {
 	enum Interaction { Submit, Select, Done, StartOver, Default };
 	
 	private String visitorId = null;
+	private ConfigurationMap configDetails = null;
 	
 	/**
 	 * This is the main web service method that processes all the various request and provides a response
 	 * @return the string response
 	 */
 	@GET
-	@Produces({MediaType.APPLICATION_JSON})
 	@Path("processrequest")
-	public SlapResponse processRequest(@Context UriInfo uriInfo){
+	public Response processRequest(@Context UriInfo uriInfo){
 		
 		SlapResponse processedResponse = new SlapResponse();
+		final MultivaluedMap<String, String> queryParams = uriInfo.getQueryParameters();
+		String visitorId = ""; //default null value
+		int apiVersion = 0;
 		
 		LogUtil.debug("Received a process request");
 		
 		//if valid visitor id has been provided
-		//TODO: check if the test is valid, and meets the requirements
-		MultivaluedMap<String, String> queryParams = uriInfo.getQueryParameters(); 
-		String visitorId = ""; //default null value
-		int apiVersion = 0;
 		try{
 			visitorId =  queryParams.getFirst(VISITOR_ID);
 			processedResponse.visitorId = visitorId;
@@ -91,8 +105,8 @@ public class SlapRestImpl {
 			processedResponse.errorDescription = ex.getMessage();
 		}
 		
-		return processedResponse;
 		
+		return createResponse(processedResponse, queryParams).build();
 		
 	}
 
@@ -101,18 +115,22 @@ public class SlapRestImpl {
 		SlapResponse response = new SlapResponse();
 		response.visitorId = visitorId;
 		
+		
 		//Step 1: Load the configuration information from the map.xml file
 		String mapXMLFile = System.getenv("SLAP_MAP_XML_FILE");
 		mapXMLFile = mapXMLFile == null || mapXMLFile.isEmpty() ? MAP_FILENAME : mapXMLFile;
 		
 		LogManager.getRootLogger().debug("Loading configuration from " + mapXMLFile);
 		
-		ConfigurationMap configDetails = ConfigurationMap.getConfig(mapXMLFile);
+		this.configDetails = ConfigurationMap.getConfig(mapXMLFile);
 		LogUtil.debug("Connecting to " + configDetails.mongoAddress + " @ " + configDetails.mongoPort);
 		Database.initializeMongoAddress(configDetails.mongoAddress, configDetails.mongoPort);
 
+		//Step 2.1 Validate with 3Scale
+		if(!threeScaleAuth(queryParams))
+			return response;
 		
-		//Step 2: Validate the visitor ID has existing token Id
+		//Step 2.2: Validate the visitor ID has existing token Id
 		Visitor visitor = Visitor.getUserWithVisitorId(visitorId);
 		if(visitor == null){
 			response.errorDescription = "Unknown visitor Id";
@@ -144,6 +162,7 @@ public class SlapRestImpl {
 			}
 		}
 		
+		LogUtil.debug("Selected interaction is " + interactionType);
 		switch(interactionType){
 		case Select:
 			selectInteraction(response, queryParams, configDetails, queryParams.getFirst(PARAM_ITEM_ID));
@@ -170,6 +189,8 @@ public class SlapRestImpl {
 	private void defaultInteraction(SlapResponse response,
 			MultivaluedMap<String, String> queryParams,
 			ConfigurationMap configDetails) throws Exception {
+		
+		
 		BasicDBObject query = new BasicDBObject("visitorId", visitorId);
 		
 		DBObject visitorInfo = Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME).findOne(query);
@@ -563,8 +584,9 @@ public class SlapRestImpl {
 	 */
 	@GET
 	@Path("getvisitorid")
-	@Produces({MediaType.APPLICATION_JSON})
-	public Visitor getVisitorId(@QueryParam(value = "userid") String userId){
+	public Response getVisitorId(@Context UriInfo uriInfo,
+		@QueryParam(value = "userid") String userId){
+		final MultivaluedMap<String, String> queryParams = uriInfo.getQueryParameters();
 		Visitor visitor = new Visitor();
 		if(userId != null && !userId.isEmpty()){
 			try {
@@ -580,7 +602,54 @@ public class SlapRestImpl {
 			visitor.errorDescription = "Please provide a valid user id";
 		}
 		
-		return visitor;
+		return createResponse(visitor, queryParams).build();
+	}
+
+	/**
+	* wraps a response to jsonp if required
+	*/
+	private Response.ResponseBuilder createResponse(Object objectToWrap, final MultivaluedMap<String, String> queryParams){
+		final Object objectToOutput = objectToWrap; //creating a final variable to pass to anonymous inner class
+		// This code serializes the actual response
+		StreamingOutput output = new StreamingOutput() {
+			
+			public void write(OutputStream outputStream) throws IOException,
+					WebApplicationException {
+				
+				ObjectMapper mapper = new ObjectMapper();
+				
+				
+				String callback = queryParams.getFirst("callback");
+				
+				//if pretty param is present prettifies the output
+				if(queryParams.containsKey("pretty"))
+					mapper.enable(SerializationFeature.INDENT_OUTPUT);
+				
+				mapper.configure(JsonGenerator.Feature.AUTO_CLOSE_TARGET, false);
+				
+				//if callback parameter is passed as a URL parameter
+				//A JSONP response callback(output) is called
+				//else a simple JSON object is returned
+				if(callback == null || callback.isEmpty()){
+					mapper.writeValue(outputStream, objectToOutput);
+				}
+				else{
+					outputStream.write( (callback + "(").getBytes());
+					mapper.writeValue(outputStream, objectToOutput);
+					outputStream.write(");".getBytes());
+					outputStream.flush();
+					outputStream.close();
+				}
+				
+			}
+			
+		};
+		
+		
+		
+		String returnType = queryParams.getFirst("callback") != null ? "application/javascript" : MediaType.APPLICATION_JSON;
+
+		return Response.ok(output, returnType);
 	}
 	
 	
@@ -648,6 +717,8 @@ public class SlapRestImpl {
 		//response.questions.add(nextQuestion);
 		//response.items = substituteVariables((List<Map<String, Object>>)cachedEntity.get("challenges"));
 		
+		
+		
 		return response;
 		//Question.storeQuestion(visitorId, queryParams);
 	}
@@ -669,4 +740,38 @@ public class SlapRestImpl {
 		return null;
 	}*/
 
+	private boolean threeScaleAuth(MultivaluedMap<String, String> queryParams){
+		LogUtil.debug("Authenticating with 3Scale");
+		
+		ServiceApi serviceApi = new ServiceApiDriver(configDetails.threeScaleProviderKey);
+		
+		ParameterMap params = new ParameterMap();      // the parameters of your call
+		params.add("service_id", queryParams.getFirst("appId"));  // Add the service id of your application
+		params.add("user_key", queryParams.getFirst("appKey"));
+		
+		ParameterMap usage = new ParameterMap(); // Add a metric to the call
+		usage.add("hits", "1");
+		params.add("usage", usage);              // metrics belong inside the usage parameter
+		
+		AuthorizeResponse response = null;
+		// the 'preferred way' of calling the backend: authrep
+		try {
+			response = serviceApi.authrep(params);
+			LogUtil.debug("AuthRep on User Key Success: " + response.success());
+			
+			if (response.success() == true) {
+				// your api access got authorized and the  traffic added to 3scale backend
+				LogUtil.trace("Plan: " + response.getPlan());
+			} else {
+				// your api access did not authorized, check why
+				LogUtil.trace("Error: " + response.getErrorCode());
+				LogUtil.trace("Reason: " + response.getReason());
+			}
+		} catch (ServerError serverError) {
+			LogUtil.error(serverError.getMessage());
+			return false;
+		}
+		
+		return response.success();
+	}
 }

@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <config>
+    <threeScale>
+        <providerKey>Your Provider Key Goes Here</providerKey>
+    </threeScale>
     <mongo>
         <serverAddress>localhost</serverAddress>
         <serverPort>27017</serverPort>
