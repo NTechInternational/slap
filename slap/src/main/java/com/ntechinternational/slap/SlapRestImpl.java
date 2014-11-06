@@ -600,7 +600,7 @@ public class SlapRestImpl {
 			visitor.errorDescription = "Please provide a valid user id";
 		}
 		
-		return createResponse(visitor).build;
+		return createResponse(visitor).build();
 	}
 
 	/**
