@@ -106,7 +106,7 @@ public class SlapRestImpl {
 		}
 		
 		
-		return createResponse(processedResponse).build();
+		return createResponse(processedResponse, queryParams).build();
 		
 	}
 
@@ -584,7 +584,9 @@ public class SlapRestImpl {
 	 */
 	@GET
 	@Path("getvisitorid")
-	public Response getVisitorId(@QueryParam(value = "userid") String userId){
+	public Response getVisitorId(@Context UriInfo uriInfo,
+		@QueryParam(value = "userid") String userId){
+		final MultivaluedMap<String, String> queryParams = uriInfo.getQueryParameters();
 		Visitor visitor = new Visitor();
 		if(userId != null && !userId.isEmpty()){
 			try {
@@ -606,7 +608,7 @@ public class SlapRestImpl {
 	/**
 	* wraps a response to jsonp if required
 	*/
-	private Response.ResponseBuilder createResponse(Object objectToWrap){
+	private Response.ResponseBuilder createResponse(Object objectToWrap, final MultivaluedMap<String, String> queryParams){
 		final Object objectToOutput = objectToWrap; //creating a final variable to pass to anonymous inner class
 		// This code serializes the actual response
 		StreamingOutput output = new StreamingOutput() {
