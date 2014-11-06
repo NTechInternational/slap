@@ -20,6 +20,7 @@ public class ConfigurationMap {
 	public String challengePath;
 	public String mongoAddress;
 	public int mongoPort;
+	public String threeScaleProviderKey;
 	
 	public List<RequestParam> requestParams;
 	/**
@@ -77,6 +78,7 @@ public class ConfigurationMap {
 				
 				XMLConfiguration config = new XMLConfiguration(mapFileName); //load the configuration file
 				
+				singletonMap.threeScaleProviderKey = config.getString("threeScale.providerKey");
 				singletonMap.mongoPort = config.getInt("mongo.serverPort");
 				singletonMap.mongoAddress = config.getString("mongo.serverAddress");
 				

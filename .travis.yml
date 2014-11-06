@@ -1,5 +1,4 @@
 language: java
-before_install: cd slap
   
 install: mvn clean package -DskipTests=true
 

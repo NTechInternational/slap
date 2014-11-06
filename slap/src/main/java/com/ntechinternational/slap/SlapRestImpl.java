@@ -14,21 +14,23 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.Application;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriInfo;
-import javax.ws.rs.core.Response.StatusType;
 
 import org.apache.logging.log4j.LogManager;
 
+import threescale.v3.api.AuthorizeResponse;
+import threescale.v3.api.ParameterMap;
+import threescale.v3.api.ServerError;
+import threescale.v3.api.ServiceApi;
+import threescale.v3.api.impl.ServiceApiDriver;
+
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.mongodb.BasicDBList;
@@ -153,6 +155,7 @@ public class SlapRestImpl {
 		SlapResponse response = new SlapResponse();
 		response.visitorId = visitorId;
 		
+		
 		//Step 1: Load the configuration information from the map.xml file
 		String mapXMLFile = System.getenv("SLAP_MAP_XML_FILE");
 		mapXMLFile = mapXMLFile == null || mapXMLFile.isEmpty() ? MAP_FILENAME : mapXMLFile;
@@ -163,8 +166,11 @@ public class SlapRestImpl {
 		LogUtil.debug("Connecting to " + configDetails.mongoAddress + " @ " + configDetails.mongoPort);
 		Database.initializeMongoAddress(configDetails.mongoAddress, configDetails.mongoPort);
 
+		//Step 2.1 Validate with 3Scale
+		if(!threeScaleAuth(queryParams))
+			return response;
 		
-		//Step 2: Validate the visitor ID has existing token Id
+		//Step 2.2: Validate the visitor ID has existing token Id
 		Visitor visitor = Visitor.getUserWithVisitorId(visitorId);
 		if(visitor == null){
 			response.errorDescription = "Unknown visitor Id";
@@ -703,6 +709,8 @@ public class SlapRestImpl {
 		//response.questions.add(nextQuestion);
 		//response.items = substituteVariables((List<Map<String, Object>>)cachedEntity.get("challenges"));
 		
+		
+		
 		return response;
 		//Question.storeQuestion(visitorId, queryParams);
 	}
@@ -724,5 +732,38 @@ public class SlapRestImpl {
 		return null;
 	}*/
 
-
+	private boolean threeScaleAuth(MultivaluedMap<String, String> queryParams){
+		LogUtil.debug("Authenticating with 3Scale");
+		
+		ServiceApi serviceApi = new ServiceApiDriver(configDetails.threeScaleProviderKey);
+		
+		ParameterMap params = new ParameterMap();      // the parameters of your call
+		params.add("service_id", queryParams.getFirst("appId"));  // Add the service id of your application
+		params.add("user_key", queryParams.getFirst("appKey"));
+		
+		ParameterMap usage = new ParameterMap(); // Add a metric to the call
+		usage.add("hits", "1");
+		params.add("usage", usage);              // metrics belong inside the usage parameter
+		
+		AuthorizeResponse response = null;
+		// the 'preferred way' of calling the backend: authrep
+		try {
+			response = serviceApi.authrep(params);
+			LogUtil.debug("AuthRep on User Key Success: " + response.success());
+			
+			if (response.success() == true) {
+				// your api access got authorized and the  traffic added to 3scale backend
+				LogUtil.trace("Plan: " + response.getPlan());
+			} else {
+				// your api access did not authorized, check why
+				LogUtil.trace("Error: " + response.getErrorCode());
+				LogUtil.trace("Reason: " + response.getReason());
+			}
+		} catch (ServerError serverError) {
+			LogUtil.error(serverError.getMessage());
+			return false;
+		}
+		
+		return response.success();
+	}
 }
