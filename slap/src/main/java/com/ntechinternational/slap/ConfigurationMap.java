@@ -21,6 +21,9 @@ public class ConfigurationMap {
 	public String mongoAddress;
 	public int mongoPort;
 	public String threeScaleProviderKey;
+	public String threeScaleEnabled;
+	public String threeScaleAppId;
+	public String threeScaleAppKey;
 	
 	public List<RequestParam> requestParams;
 	/**
@@ -79,6 +82,10 @@ public class ConfigurationMap {
 				XMLConfiguration config = new XMLConfiguration(mapFileName); //load the configuration file
 				
 				singletonMap.threeScaleProviderKey = config.getString("threeScale.providerKey");
+				singletonMap.threeScaleEnabled = config.getString("threeScale[@mode]");
+				singletonMap.threeScaleAppId = config.getString("threeScale.appId");
+				singletonMap.threeScaleAppKey = config.getString("threeScale.appSecret");
+				
 				singletonMap.mongoPort = config.getInt("mongo.serverPort");
 				singletonMap.mongoAddress = config.getString("mongo.serverAddress");
 				
