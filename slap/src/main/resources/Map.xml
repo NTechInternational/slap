@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <config>
-    <threeScale>
-        <providerKey>Your Provider Key Goes Here</providerKey>
+    <!-- Enabling and disabling three scale can be done by setting the mode param
+    mode="on" will turn on the 3 scale api
+    mode="off" will turn 3 scale authentication -->
+    <threeScale mode="on">
+        <providerKey>Your 3 scale provider key</providerKey>
+        <appId>3 scale app Id</appId>
+        <appSecret>3 scale app secret</appSecret>
     </threeScale>
     <mongo>
         <serverAddress>localhost</serverAddress>

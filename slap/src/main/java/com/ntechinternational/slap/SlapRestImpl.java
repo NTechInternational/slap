@@ -11,7 +11,6 @@ import java.util.Map;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
@@ -37,6 +36,8 @@ import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
+import com.ntechinternational.slap.ConfigurationMap;
+import com.ntechinternational.slap.LogUtil;
 
 @Path("/rest")
 public class SlapRestImpl {
@@ -127,7 +128,7 @@ public class SlapRestImpl {
 		Database.initializeMongoAddress(configDetails.mongoAddress, configDetails.mongoPort);
 
 		//Step 2.1 Validate with 3Scale
-		if(!threeScaleAuth(queryParams))
+		if(!threeScaleAuth(queryParams, response))
 			return response;
 		
 		//Step 2.2: Validate the visitor ID has existing token Id
@@ -189,7 +190,6 @@ public class SlapRestImpl {
 	private void defaultInteraction(SlapResponse response,
 			MultivaluedMap<String, String> queryParams,
 			ConfigurationMap configDetails) throws Exception {
-		
 		
 		BasicDBObject query = new BasicDBObject("visitorId", visitorId);
 		
@@ -740,14 +740,26 @@ public class SlapRestImpl {
 		return null;
 	}*/
 
-	private boolean threeScaleAuth(MultivaluedMap<String, String> queryParams){
+	private boolean threeScaleAuth(MultivaluedMap<String, String> queryParams, SlapResponse responseToReturn){
+		
+		if(configDetails.threeScaleEnabled.equalsIgnoreCase("off")){
+			LogUtil.debug("3 scale is turned off");
+			return true;
+		}
+		
 		LogUtil.debug("Authenticating with 3Scale");
 		
 		ServiceApi serviceApi = new ServiceApiDriver(configDetails.threeScaleProviderKey);
 		
+		String appId = queryParams.getFirst("appId"),
+				appKey = queryParams.getFirst("appKey");
+		
+		appId = appId == null ? configDetails.threeScaleAppId : appId;
+		appKey = appKey == null ? configDetails.threeScaleAppKey : appKey;
+		
 		ParameterMap params = new ParameterMap();      // the parameters of your call
-		params.add("service_id", queryParams.getFirst("appId"));  // Add the service id of your application
-		params.add("user_key", queryParams.getFirst("appKey"));
+		params.add("service_id", appId);  // Add the service id of your application
+		params.add("user_key", appKey);
 		
 		ParameterMap usage = new ParameterMap(); // Add a metric to the call
 		usage.add("hits", "1");
@@ -766,6 +778,9 @@ public class SlapRestImpl {
 				// your api access did not authorized, check why
 				LogUtil.trace("Error: " + response.getErrorCode());
 				LogUtil.trace("Reason: " + response.getReason());
+				
+				responseToReturn.errorDescription = response.getReason();
+				
 			}
 		} catch (ServerError serverError) {
 			LogUtil.error(serverError.getMessage());
