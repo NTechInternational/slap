@@ -13,7 +13,7 @@ import com.ntechinternational.slap.Visitor;
 public class VisitorTest {
 	
 	private static final String VISITOR_USER_ID = "123123123";
-	
+	/*
 	@Before
 	public void setup(){
 		try{
@@ -43,4 +43,5 @@ public class VisitorTest {
 			e.printStackTrace();
 		}
 	}
+	*/
 }
