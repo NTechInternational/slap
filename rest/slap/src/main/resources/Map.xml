@@ -3,7 +3,7 @@
     <!-- Enabling and disabling three scale can be done by setting the mode param
     mode="on" will turn on the 3 scale api
     mode="off" will turn 3 scale authentication -->
-    <threeScale mode="on">
+    <threeScale mode="off">
         <providerKey>Your 3 scale provider key</providerKey>
         <appId>3 scale app Id</appId>
         <appSecret>3 scale app secret</appSecret>
@@ -24,6 +24,7 @@
 	     	<param name="wt" value="json"/>
 	        <param name="rows" value="5" type="default" />
 	        <param name="sort" value="priority_i%20desc" type="default" />
+	        <param name="language_s" value="en" type="default" />
 	    </otherParam>
 	</request>
 	<response>
@@ -44,6 +45,7 @@
 	     <fieldName source="Variables_s" target="variables" />
 	     <fieldName source="Template_t" target="itemtemplate" />
 	     <fieldName source="RewardType_ss" target="rewardtype" />
+	     <fieldName source="language_s" target="language" />
 	  </mappings>
 	</response>
 	
