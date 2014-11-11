@@ -101,4 +101,30 @@ public class TemplateTest {
 		
 		assertNull(keyValuePairs.get("Random"));
 	}
+	
+	@Test
+	public void givenImproperlyCasedString_CaseIsCorrected(){
+		String itemTemplate = "my sentence is incorrect.   i need it corrected.";
+		
+		template = new Template(itemTemplate);
+		
+		Map<String, String> values = new HashMap<String, String>();
+		Map<String, String> defaultValues = new HashMap<String, String>();
+		
+		String output = template.process(values, defaultValues);
+		
+		assertEquals("My sentence is incorrect. I need it corrected.", output);
+	}
+	
+	@Test
+	public void issueWithItem1013TestedWithSeparator(){
+		String itemTemplate = "Introduce a new &Customer and &RewardAction &RewardAmount &Reward.";
+		Map<String, String> variables = Template.getVariablesFromString("&Customer:Member, &RewardAction:get, &RewardAmount:one, &Reward:month free (Introduce a new member and get one month free.)");
+		
+		template = new Template(itemTemplate);
+		String output = template.process(variables, new HashMap<String, String>());
+		
+		assertFalse(output.contains("&RewardAction"));
+		
+	}
 }

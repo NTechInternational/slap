@@ -541,7 +541,8 @@ public class SlapRestImpl {
 						//just providing
 		}
 		
-		response.items = new Substitutor().substituteVariables(challenges, visitorId);
+		
+		response.items = challenges;
 		response.visitorId = visitorId;
 		
 	}
