@@ -11,6 +11,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import org.apache.commons.lang.StringEscapeUtils;
 
 public class UploadServlet extends HttpServlet {
 	
@@ -22,21 +23,38 @@ public class UploadServlet extends HttpServlet {
 	@Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-	
-		if(ServletFileUpload.isMultipartContent(request)){
+		if(request.getParameter("clearAll") != null){
+			try{
+				new SolrManager().clearSolr();
+				request.setAttribute("message", "All documents have been cleared");
+			}
+			catch(Exception ex){
+				request.setAttribute("message", "Clear failed due to " + ex);
+			}
 			
+		}
+		else if(ServletFileUpload.isMultipartContent(request)){
+			
+    		
 			//ensure file is csv
 			try {
+				SolrManager mgr = new SolrManager();
                 List<FileItem> multiparts = new ServletFileUpload(new DiskFileItemFactory()).parseRequest(request);
               
                 
                 FileItem csvFile = getCSVFile(multiparts, "questionCSV", request);
             	if(csvFile != null){
-            		SolrManager mgr = new SolrManager();
-            		request.setAttribute("message", mgr.uploadQuestionToSolr(csvFile.getInputStream()));
+            		request.setAttribute("message",StringEscapeUtils.escapeHtml(mgr.uploadQuestionToSolr(csvFile.getInputStream())));
             	}
             	else{
-            		request.setAttribute("message", "Invalid file provided");
+            		csvFile = getCSVFile(multiparts, "challengeCSV", request);
+            		if(csvFile != null){
+            			request.setAttribute("message", 
+            					StringEscapeUtils.escapeHtml(mgr.uploadChallengeToSolr(csvFile.getInputStream())));
+            		}
+            		else{
+            			request.setAttribute("message", "Invalid file provided");
+            		}
             	}
             } catch (Exception ex) {
                request.setAttribute("message", "File Upload Failed due to " + ex);
@@ -65,5 +83,36 @@ public class UploadServlet extends HttpServlet {
 		
 		return retItem;
 
+	}
+	
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+		
+		try{
+			if(request.getParameter("exportQuestions") != null){
+				response.addHeader("Content-Disposition", "attachment; filename=\"questions.csv\"");
+				response.addHeader("Content-Type", "text/csv");
+				new SolrManager().exportQuestion(response.getOutputStream());
+				response.getOutputStream().flush();
+			}
+			else if(request.getParameter("exportChallenges") != null){
+				response.addHeader("Content-Disposition", "attachment; filename=\"challenges.csv\"");
+				response.addHeader("Content-Type", "text/csv; charset=utf-8");
+				new SolrManager().exportChallenge(response.getOutputStream());
+				response.getOutputStream().flush();
+			}
+			else{
+				request.getRequestDispatcher("/result.jsp").forward(request, response);
+			}
+		}
+		catch(Exception ex){
+			request.setAttribute("message",
+                    ex.getMessage());
+			
+			request.getRequestDispatcher("/result.jsp").forward(request, response);
+		}
+		
+		
 	}
 }

@@ -32,7 +32,7 @@ public class SolrManager {
 		config.setExpressionEngine(new XPathExpressionEngine());
 	}
 	
-	public String executeQuery(String queryName, InputStream dataToSendStream) throws IOException{
+	public String executeQuery(String queryName, InputStream dataToSendStream, OutputStream returnStream) throws IOException{
 		StringBuilder queryURL = new StringBuilder();
 		
 		HierarchicalConfiguration queryNode = config.configurationAt("queries/query[@name='" + queryName + "']");
@@ -51,8 +51,12 @@ public class SolrManager {
 			queryURL.append("?");
 			for(HierarchicalConfiguration queryParamNode : queryParamNodes){
 				queryURL.append(queryParamNode.getString("//@name"));
-				queryURL.append("=");
-				queryURL.append(URLEncoder.encode(queryParamNode.getString("."), "UTF-8"));
+				
+				String value = queryParamNode.getString(".");
+				if(value != null){
+					queryURL.append("=");
+					queryURL.append(URLEncoder.encode(value, "UTF-8"));
+				}
 				queryURL.append("&");
 			}
 		}
@@ -66,6 +70,8 @@ public class SolrManager {
 		method = method == null ? "GET" : method;
 		connection.setRequestMethod(method);
 		connection.setDoInput(true);
+		connection.setRequestProperty("Accept-Charset", "UTF-8");
+		connection.setRequestProperty("Accept", "text/xml");
 		
 		//set the content type
 		String contentType = queryNode.getString("//@contentType");
@@ -81,19 +87,36 @@ public class SolrManager {
 			outputStream.flush();
 		}
 		
+		
 		StringWriter stringWriter = new StringWriter();
-		IOUtils.copy(connection.getInputStream(), stringWriter, connection.getContentEncoding());
+		
+		if(returnStream != null)
+			IOUtils.copy(connection.getInputStream(), returnStream);
+		else
+			IOUtils.copy(connection.getInputStream(), stringWriter);
 		
 		return stringWriter.toString();
 	}
 	
 	public String clearSolr() throws IOException{
 		
-		return executeQuery("reset", null);
+		return executeQuery("reset", null, null);
 	}
 	
 	public String uploadQuestionToSolr(InputStream inputStream) throws IOException{
 		
-		return executeQuery("insertQuestion", inputStream);
+		return executeQuery("insertQuestion", inputStream, null);
+	}
+	
+	public String uploadChallengeToSolr(InputStream inputStream) throws IOException {
+		return executeQuery("insertChallenge", inputStream, null);
+	}
+	
+	public void exportQuestion(OutputStream outputStream) throws IOException {
+		executeQuery("exportQuestion", null, outputStream);
+	}
+	
+	public void exportChallenge(OutputStream outputStream) throws IOException {
+		executeQuery("exportChallenge", null, outputStream);
 	}
 }
