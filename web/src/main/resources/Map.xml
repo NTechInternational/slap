@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <url>http://localhost:8983</url>
+    <queries defaultPath="/solr/update">
+        <!-- each query can have a path attribute if different path is to be executed -->
+        <query name="reset">
+            <queryParams>
+                <queryParam name="stream.body"><![CDATA[<delete>query:*.*</delete>]]></queryParam>
+                <queryParam name="commit">true</queryParam>
+            </queryParams>
+        </query>
+        <query name="insertQuestion" method="POST" contentType="application/csv">
+            <queryParams>
+                <!--  queryParam name="rowid">id</queryParam -->
+                <queryParam name="header">true</queryParam>
+                <queryParam name="f.BusinessModel_ss.split">true</queryParam>
+                <queryParam name="commit">true</queryParam>
+            </queryParams>
+        </query>
+    </queries>
+</configuration>
