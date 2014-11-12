@@ -12,6 +12,7 @@ public class Database {
 	public static final String MONGO_VISITOR_COLLECTION_NAME = "visitors";
 	public static final String MONGO_QUESTION_COLLECTION_NAME = "questions";
 	public static final String MONGO_VISITOR_SESSION_COLLECTION_NAME = "visitorSession";
+	public static final String MONGO_VISITOR_SESSION_START_OVER_COLLECTION_NAME = "visitorSessionStartOver";
 	public static final String MONGO_TEMP_QUESTION_STORE = "tempQuestions";
 	public static final String MONGO_TEMP_CHALLENGE_STORE = "tempChallenges";
 	
