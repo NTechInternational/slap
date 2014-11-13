@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <url>http://localhost:8983</url>
+    <queries defaultPath="/solr/update">
+        <!-- each query can have a path attribute if different path is to be executed -->
+        <query name="reset">
+            <queryParams>
+                <queryParam name="stream.body"><![CDATA[<delete><query>*:*</query></delete>]]></queryParam>
+                <queryParam name="commit">true</queryParam>
+            </queryParams>
+        </query>
+        <query name="insertQuestion" method="POST" contentType="application/csv">
+            <queryParams>
+                <!--  queryParam name="rowid">id</queryParam -->
+                <queryParam name="header">true</queryParam>
+                <queryParam name="f.BusinessModel_ss.split">true</queryParam>
+                <queryParam name="commit">true</queryParam>
+                <queryParam name="debug">results</queryParam>
+            </queryParams>
+        </query>
+        <query name="insertChallenge" method="POST" contentType="application/csv">
+            <queryParams>
+                <!--  queryParam name="rowid">id</queryParam -->
+                <queryParam name="header">true</queryParam>
+                <queryParam name="f.BusinessModel_ss.split">true</queryParam>
+                <queryParam name="commit">true</queryParam>
+            </queryParams>
+        </query>
+        <query name="exportQuestion" method="GET" path="/solr/collection1/questions">
+            <queryParams>
+                <queryParam name="wt">csv</queryParam>
+                <queryParam name="fl">id,priority_i,Group_i,type_s,question_t,answers_t,BusinessModel_ss,Variables_s,Label_s,source,language_s
+</queryParam>
+                <queryParam name="q">*:*</queryParam>
+                <queryParam name="sort">id asc</queryParam>
+                <queryParam name="rows">100000000</queryParam>
+            </queryParams>
+        </query>
+        <query name="exportChallenge" method="GET" path="/solr/collection1/items">
+            <queryParams>
+                <queryParam name="wt">csv</queryParam>
+                <queryParam name="fl">id,priority_i,Template_t,Variables_s,Facets_s,BusinessModel_ss,RewardType_ss,Goal_ss,Motivation_ss,source,language_s
+</queryParam>
+                <queryParam name="q">*:*</queryParam>
+                <queryParam name="sort">id asc</queryParam>
+                <queryParam name="rows">100000000</queryParam>
+            </queryParams>
+        </query>
+    </queries>
+</configuration>
