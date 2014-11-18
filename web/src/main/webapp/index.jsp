@@ -1,3 +1,5 @@
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1" isELIgnored="false" %>
 <html>
 <head>
 	<title>Slap Admin Portal</title>
@@ -128,5 +130,12 @@
 				</li>
 			</ul>
 	</div>
+	
+	<script type="text/javascript">
+		var messageToShow = '${requestScope["message"]}';
+		if(messageToShow.length > 0){
+			alert(messageToShow);
+		}
+	</script>
 </body>
 </html>

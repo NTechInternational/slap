@@ -1,6 +1,8 @@
 package com.ntechinternational.slap.web;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URL;
 import java.util.List;
 
 import javax.servlet.ServletException;
@@ -44,13 +46,18 @@ public class UploadServlet extends HttpServlet {
                 
                 FileItem csvFile = getCSVFile(multiparts, "questionCSV", request);
             	if(csvFile != null){
-            		request.setAttribute("message",StringEscapeUtils.escapeHtml(mgr.uploadQuestionToSolr(csvFile.getInputStream())));
+            		if(mgr.uploadQuestionToSolr(csvFile.getInputStream()))
+        				request.setAttribute("message", "Successfully, uploaded the questions");
+            		else
+            			request.setAttribute("message", "Failed to upload the challenge");
             	}
             	else{
             		csvFile = getCSVFile(multiparts, "challengeCSV", request);
             		if(csvFile != null){
-            			request.setAttribute("message", 
-            					StringEscapeUtils.escapeHtml(mgr.uploadChallengeToSolr(csvFile.getInputStream())));
+            			if(mgr.uploadChallengeToSolr(csvFile.getInputStream()))
+        					request.setAttribute("message", "Successfully, uploaded the challenges");
+            			else
+            				request.setAttribute("message", "Failed to upload the challenge");
             		}
             		else{
             			request.setAttribute("message", "Invalid file provided");
@@ -65,7 +72,7 @@ public class UploadServlet extends HttpServlet {
                                  "Sorry this Servlet only handles file upload request");
         }
     
-		request.getRequestDispatcher("/result.jsp").forward(request, response);
+		request.getRequestDispatcher("/index.jsp").forward(request, response);
 	}
 
 	private FileItem getCSVFile(List<FileItem> multiparts, String paramName, HttpServletRequest request) {
@@ -73,7 +80,7 @@ public class UploadServlet extends HttpServlet {
 		
 		for(FileItem item : multiparts){
             if(!item.isFormField() && item.getFieldName().equals(paramName)){
-            	if(item.getSize() != 0 && item.getContentType().equals("text/csv")){
+            	if(item.getSize() != 0 ){ //&& item.getContentType().equals("text/csv") : chrome sets content type to application/octet-stream
         			retItem = item;
             	}
             	
@@ -110,7 +117,7 @@ public class UploadServlet extends HttpServlet {
 			request.setAttribute("message",
                     ex.getMessage());
 			
-			request.getRequestDispatcher("/result.jsp").forward(request, response);
+			request.getRequestDispatcher("/index.jsp").forward(request, response);
 		}
 		
 		
