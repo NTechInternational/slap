@@ -249,13 +249,13 @@ public class SlapRestImpl {
 		}
 
 		
-		saveAllSessionInformation(Database.MONGO_VISITOR_SESSION_COLLECTION_NAME);
+		saveAllSessionInformation(Database.MONGO_VISITOR_SESSION_COLLECTION_NAME, queryParams.getFirst("text"));
 	}
 
 	/**
 	 * @throws UnknownHostException
 	 */
-	private void saveAllSessionInformation(String collectionName) throws UnknownHostException {
+	private void saveAllSessionInformation(String collectionName, String finalText) throws UnknownHostException {
 		//save all the interaction responses to visitor session collection
 		BasicDBObject query = new BasicDBObject("visitorId", this.visitorId);
 		
@@ -276,6 +276,8 @@ public class SlapRestImpl {
 		
 		objectToSave.append("questions", questions);
 		
+		objectToSave.append("finalText", finalText);
+		
 		Database.getCollection(collectionName).insert(objectToSave);
 	}
 
@@ -289,7 +291,7 @@ public class SlapRestImpl {
 		//Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME).remove(visitorQuery);
 		//clearing visitorId is not necessary
 		
-		saveAllSessionInformation(Database.MONGO_VISITOR_SESSION_START_OVER_COLLECTION_NAME);
+		saveAllSessionInformation(Database.MONGO_VISITOR_SESSION_START_OVER_COLLECTION_NAME, "");
 		
 		
 		Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).remove(visitorQuery);
