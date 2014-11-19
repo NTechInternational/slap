@@ -564,6 +564,10 @@ public class SlapRestImpl {
 	private void changeSchemaForAnswers(List<Map<String, Object>> questions) {
 		for(Map<String,Object> question : questions){
 			
+			//ignore if no answers
+			if(question.get("answers") == null)
+				continue;
+			
 			String answer = question.get("answers").toString();
 			List<Map<String, String>> allOptions = new ArrayList<Map<String, String>>();
 			String[] options = answer.split("\\|"); // all options are separated by | symbol
