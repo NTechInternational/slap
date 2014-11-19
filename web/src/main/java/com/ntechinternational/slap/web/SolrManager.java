@@ -19,6 +19,9 @@ import org.xml.sax.InputSource;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.XMLReaderFactory;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern; 
+
 public class SolrManager {
 	private static final String DEFAULT_CONFIG_LOCATION = "Map.xml";
 	
@@ -113,14 +116,36 @@ public class SolrManager {
 		return responseString.contains("<int name=\"status\">0</int>");
 	}
 	
-	public boolean uploadQuestionToSolr(InputStream inputStream) throws IOException{
+	private int getRowsInserted(String itemType) throws IOException{
+		int rowsInserted = -1;
 		
-		String result = executeQuery("insertQuestion", inputStream, null);
-		return getSuccessStatus(result);
+		String result = executeQuery(itemType, null, null); //get rows inserted
+		Pattern numFound = Pattern.compile("numFound=\"([0-9]+)\"");
+		Matcher match = numFound.matcher(result);
+		if(match.find()){
+			rowsInserted = Integer.parseInt(match.group(1));
+		}
+
+		return rowsInserted;
 	}
 	
-	public boolean uploadChallengeToSolr(InputStream inputStream) throws IOException {
-		return  getSuccessStatus(executeQuery("insertChallenge", inputStream, null));
+	public int uploadQuestionToSolr(InputStream inputStream) throws IOException{
+		int rowsInserted = -1;
+		
+		if(getSuccessStatus(executeQuery("insertQuestion", inputStream, null))){
+			rowsInserted = getRowsInserted("questionCount");
+		}
+		
+		return rowsInserted;
+	}
+	
+	public int uploadChallengeToSolr(InputStream inputStream) throws IOException {
+		int rowsInserted = -1;
+		if(getSuccessStatus(executeQuery("insertChallenge", inputStream, null))){
+			rowsInserted = getRowsInserted("challengeCount");
+		}
+		
+		return rowsInserted;
 	}
 	
 	public void exportQuestion(OutputStream outputStream) throws IOException {

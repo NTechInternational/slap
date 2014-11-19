@@ -46,16 +46,18 @@ public class UploadServlet extends HttpServlet {
                 
                 FileItem csvFile = getCSVFile(multiparts, "questionCSV", request);
             	if(csvFile != null){
-            		if(mgr.uploadQuestionToSolr(csvFile.getInputStream()))
-        				request.setAttribute("message", "Successfully, uploaded the questions");
+            		int rowsInserted = mgr.uploadQuestionToSolr(csvFile.getInputStream());
+            		if(rowsInserted > 0)
+        				request.setAttribute("message", "Successfully, uploaded " + rowsInserted + " questions");
             		else
             			request.setAttribute("message", "Failed to upload the challenge");
             	}
             	else{
             		csvFile = getCSVFile(multiparts, "challengeCSV", request);
             		if(csvFile != null){
-            			if(mgr.uploadChallengeToSolr(csvFile.getInputStream()))
-        					request.setAttribute("message", "Successfully, uploaded the challenges");
+            			int rowsInserted = mgr.uploadChallengeToSolr(csvFile.getInputStream());
+            			if(rowsInserted > 0)
+        					request.setAttribute("message", "Successfully, uploaded " + rowsInserted + " challenges");
             			else
             				request.setAttribute("message", "Failed to upload the challenge");
             		}
