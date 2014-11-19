@@ -46,5 +46,17 @@
                 <queryParam name="rows">100000000</queryParam>
             </queryParams>
         </query>
+        <query name="questionCount" method="GET" path="/solr/collection1/questions">
+        	<queryParams>
+        		<queryParam name="rows">0</queryParam>
+        		<queryParam name="q">*:*</queryParam>
+        	</queryParams>
+        </query>
+        <query name="challengeCount" method="GET" path="/solr/collection1/items">
+        	<queryParams>
+        		<queryParam name="rows">0</queryParam>
+        		<queryParam name="q">*:*</queryParam>
+        	</queryParams>
+        </query>
     </queries>
 </configuration>

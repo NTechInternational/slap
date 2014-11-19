@@ -1,5 +1,6 @@
 package com.ntechinternational.slap.web;
 
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -14,6 +15,12 @@ import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.commons.configuration.XMLConfiguration;
 import org.apache.commons.configuration.tree.xpath.XPathExpressionEngine;
 import org.apache.commons.io.IOUtils;
+import org.xml.sax.InputSource;
+import org.xml.sax.XMLReader;
+import org.xml.sax.helpers.XMLReaderFactory;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern; 
 
 public class SolrManager {
 	private static final String DEFAULT_CONFIG_LOCATION = "Map.xml";
@@ -103,13 +110,42 @@ public class SolrManager {
 		return executeQuery("reset", null, null);
 	}
 	
-	public String uploadQuestionToSolr(InputStream inputStream) throws IOException{
-		
-		return executeQuery("insertQuestion", inputStream, null);
+	private boolean getSuccessStatus(String responseString){
+		//TODO: consider parsing the xml response, for now a simple non erroneous status check is enough
+		System.out.println(responseString);
+		return responseString.contains("<int name=\"status\">0</int>");
 	}
 	
-	public String uploadChallengeToSolr(InputStream inputStream) throws IOException {
-		return executeQuery("insertChallenge", inputStream, null);
+	private int getRowsInserted(String itemType) throws IOException{
+		int rowsInserted = -1;
+		
+		String result = executeQuery(itemType, null, null); //get rows inserted
+		Pattern numFound = Pattern.compile("numFound=\"([0-9]+)\"");
+		Matcher match = numFound.matcher(result);
+		if(match.find()){
+			rowsInserted = Integer.parseInt(match.group(1));
+		}
+
+		return rowsInserted;
+	}
+	
+	public int uploadQuestionToSolr(InputStream inputStream) throws IOException{
+		int rowsInserted = -1;
+		
+		if(getSuccessStatus(executeQuery("insertQuestion", inputStream, null))){
+			rowsInserted = getRowsInserted("questionCount");
+		}
+		
+		return rowsInserted;
+	}
+	
+	public int uploadChallengeToSolr(InputStream inputStream) throws IOException {
+		int rowsInserted = -1;
+		if(getSuccessStatus(executeQuery("insertChallenge", inputStream, null))){
+			rowsInserted = getRowsInserted("challengeCount");
+		}
+		
+		return rowsInserted;
 	}
 	
 	public void exportQuestion(OutputStream outputStream) throws IOException {
