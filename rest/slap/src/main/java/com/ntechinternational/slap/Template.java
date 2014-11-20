@@ -95,9 +95,11 @@ public class Template{
 	{
 		String retStr = removeChar(convertUpperCase(sentence));
 		//remove multiple whitespace
-		retStr=retStr.replaceAll("(\\s)\\1","");
+		retStr=retStr.replaceAll("(\\s){2,}"," ");
 		//remove dot
 		retStr= removeMultipleDot(retStr);
+		
+		retStr = retStr.replaceAll("\\)\\s+\\.", ").");
 		return retStr;
 	}
 	
