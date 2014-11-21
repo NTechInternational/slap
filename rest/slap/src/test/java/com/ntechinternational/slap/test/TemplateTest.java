@@ -127,4 +127,17 @@ public class TemplateTest {
 		assertFalse(output.contains("&RewardAction"));
 		
 	}
+	
+	@Test
+	public void issueWithRemovalOfSpace(){
+		String itemTemplate = "[Beginning &StartTime and ending] [by &Deadline] &OfferAction &OfferingAmount &Offering [and &Activity,] and &Reward] [to &Beneficiary].";
+		Map<String, String> variables = Template.getVariablesFromString("&OfferAction:buy, &OfferingAmount:one, &Offering:product, &Reward:get a second one free (Buy one product and get a second one free.)");
+		
+		template = new Template(itemTemplate);
+		String output = template.process(variables, new HashMap<String, String>());
+		
+		assertEquals("Buy one product and get a second one free (Buy one product and get a second one free.).",
+				output);
+		
+	}
 }
