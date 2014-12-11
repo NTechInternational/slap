@@ -24,7 +24,7 @@
 	     	<param name="wt" value="json"/>
 	        <param name="rows" value="5" type="default" />
 	        <param name="sort" value="priority_i%20desc" type="default" />
-	        <param name="language_s" value="en" type="default" />
+	        <param name="language_s" value="en" type="default:filter" />
 	    </otherParam>
 	</request>
 	<response>

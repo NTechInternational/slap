@@ -76,7 +76,7 @@ public class QueryManager {
 				//this is the request param name that has to be sent
 				valueToPass = queryParams.get(clientParamName);
 			}
-			else if(requestParam.paramType != null && requestParam.paramType.equals(TYPE_DEFAULT) && requestParam.paramValue != null){
+			else if(requestParam.paramType != null && requestParam.paramType.startsWith(TYPE_DEFAULT) && requestParam.paramValue != null){
 				//in case the client param is missing and the current param is of type default use the default value
 				valueToPass = new ArrayList<String>();
 				valueToPass.add(requestParam.paramValue);
@@ -84,7 +84,7 @@ public class QueryManager {
 			
 			//if we have some to send
 			if(valueToPass != null){
-				if(requestParam.paramType != null && requestParam.paramType.equals(TYPE_FILTER)){
+				if(requestParam.paramType != null && requestParam.paramType.endsWith(TYPE_FILTER)){
 					//if it is filter than pass as fq param:value
 					for(String val : valueToPass){
 						target = target.queryParam(FILTER_QUERY_NAME, requestParam.paramName + FILTER_QUERY_SEPARATOR + val);
