@@ -28,6 +28,8 @@ public class QueryManager {
 	private List<String> filtersToAdd = new ArrayList<String>();
 	private String mediaType;
 	
+	public static List<String> queryLog;
+	
 	/**
 	 * queries a given resource and returns the response as string. The query string is constructed on the
 	 * basis of the configuration passed and query parameters passed
@@ -110,6 +112,8 @@ public class QueryManager {
 		//includes all the results
 		target = target.queryParam("q", "*:*");
 		LogUtil.debug("Querying " + target.getUri());
+		if(queryLog != null)
+			queryLog.add(target.getUri().toString());
 		
 		Response response = target.request(DEFAULT_MEDIATYPE).get(); //set the accepted media type to one defined
 		
