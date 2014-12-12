@@ -56,6 +56,7 @@ public class SlapRestImpl {
 	private String visitorId = null;
 	private ConfigurationMap configDetails = null;
 	
+	
 	/**
 	 * This is the main web service method that processes all the various request and provides a response
 	 * @return the string response
@@ -110,8 +111,12 @@ public class SlapRestImpl {
 		return createResponse(processedResponse, queryParams).build();
 		
 	}
+	
+	public void setVisitorId(String visitorId){
+		this.visitorId = visitorId;
+	}
 
-	private SlapResponse processRequest(
+	public SlapResponse processRequest(
 		MultivaluedMap<String, String> queryParams) throws Exception {
 		SlapResponse response = new SlapResponse();
 		response.visitorId = visitorId;

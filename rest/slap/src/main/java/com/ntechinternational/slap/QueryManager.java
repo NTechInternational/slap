@@ -28,6 +28,8 @@ public class QueryManager {
 	private List<String> filtersToAdd = new ArrayList<String>();
 	private String mediaType;
 	
+	public static List<String> queryLog;
+	
 	/**
 	 * queries a given resource and returns the response as string. The query string is constructed on the
 	 * basis of the configuration passed and query parameters passed
@@ -76,7 +78,7 @@ public class QueryManager {
 				//this is the request param name that has to be sent
 				valueToPass = queryParams.get(clientParamName);
 			}
-			else if(requestParam.paramType != null && requestParam.paramType.equals(TYPE_DEFAULT) && requestParam.paramValue != null){
+			else if(requestParam.paramType != null && requestParam.paramType.startsWith(TYPE_DEFAULT) && requestParam.paramValue != null){
 				//in case the client param is missing and the current param is of type default use the default value
 				valueToPass = new ArrayList<String>();
 				valueToPass.add(requestParam.paramValue);
@@ -84,7 +86,7 @@ public class QueryManager {
 			
 			//if we have some to send
 			if(valueToPass != null){
-				if(requestParam.paramType != null && requestParam.paramType.equals(TYPE_FILTER)){
+				if(requestParam.paramType != null && requestParam.paramType.endsWith(TYPE_FILTER)){
 					//if it is filter than pass as fq param:value
 					for(String val : valueToPass){
 						target = target.queryParam(FILTER_QUERY_NAME, requestParam.paramName + FILTER_QUERY_SEPARATOR + val);
@@ -110,6 +112,8 @@ public class QueryManager {
 		//includes all the results
 		target = target.queryParam("q", "*:*");
 		LogUtil.debug("Querying " + target.getUri());
+		if(queryLog != null)
+			queryLog.add(target.getUri().toString());
 		
 		Response response = target.request(DEFAULT_MEDIATYPE).get(); //set the accepted media type to one defined
 		
