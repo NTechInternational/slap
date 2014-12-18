@@ -237,7 +237,7 @@ public class SlapRestImpl {
 		
 		additionalParams.putSingle("rows", "1");
 		
-		getResponseFromServer(response, queryParams, configDetails, additionalParams, null, new HashMap<String, String>());
+		getResponseFromServer(response, queryParams, configDetails, additionalParams, additionalParams, new HashMap<String, String>());
 		
 	}
 
@@ -415,7 +415,10 @@ public class SlapRestImpl {
 					if(backendKey == null)
 						backendKey = key;
 					additionalParams.add("fq", backendKey + ":" + f.get(key) );
+					additionalParamsChallenge.add("fq", backendKey + ":" + f.get(key) );
 				}
+				
+				
 			}
 			
 			LogUtil.trace("Additional Param to be sent to server: " + additionalParams);

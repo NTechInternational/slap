@@ -80,7 +80,10 @@ public class SlapResponseTest {
 		boolean uriContainsBusinessModel = false;
 		for(String uri : uriLog){
 			if(uri.contains("Membership")){
-				uriContainsBusinessModel = true;
+				uriContainsBusinessModel = true; //both challenge and question should contain facet
+			}
+			else{
+				uriContainsBusinessModel = false;
 				break;
 			}
 		}
@@ -100,7 +103,10 @@ public class SlapResponseTest {
 		
 		for(String uri : uriLog){
 			if(uri.contains("Membership")){
-				uriContainsMotivationAndBusinessModel = uri.contains("BenefitsCharity");
+				uriContainsMotivationAndBusinessModel = uri.contains("BenefitsCharity"); //both challenge and question shoutld contain facet
+			}
+			else{
+				uriContainsMotivationAndBusinessModel = false;
 				break;
 			}
 		}
