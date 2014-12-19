@@ -80,7 +80,10 @@ public class SlapResponseTest {
 		boolean uriContainsBusinessModel = false;
 		for(String uri : uriLog){
 			if(uri.contains("Membership")){
-				uriContainsBusinessModel = true;
+				uriContainsBusinessModel = true; //both challenge and question should contain facet
+			}
+			else{
+				uriContainsBusinessModel = false;
 				break;
 			}
 		}
@@ -100,7 +103,10 @@ public class SlapResponseTest {
 		
 		for(String uri : uriLog){
 			if(uri.contains("Membership")){
-				uriContainsMotivationAndBusinessModel = uri.contains("BenefitsCharity");
+				uriContainsMotivationAndBusinessModel = uri.contains("BenefitsCharity"); //both challenge and question shoutld contain facet
+			}
+			else{
+				uriContainsMotivationAndBusinessModel = false;
 				break;
 			}
 		}
@@ -215,6 +221,46 @@ public class SlapResponseTest {
 		}
 		
 		assertTrue(count > 0);
+	}
+	
+	
+	@Test
+	public void GivenALanaguageIsSelected_ItIsCorrectlyPassedToBackend() throws Exception{
+		SlapRestImpl impl = new SlapRestImpl();
+		Visitor v = Visitor.createVisitorFor("RandomUser10300");
+		
+		impl.setVisitorId(v.visitorId);
+		MultivaluedMap<String, String> queryParams = new MultivaluedHashMap<String, String>();
+		
+		SlapResponse response = impl.processRequest(queryParams);
+		
+		//select the first question's model
+		queryParams.putSingle("language", "fr");
+		uriLog.clear();
+		response = impl.processRequest(queryParams);
+		
+		for(String uri: uriLog){
+			assertTrue(uri.contains("fq=language_s:fr"));
+		}
+	}
+	
+	@Test
+	public void GivenNoLanaguageIsSelected_DefaultLanguageIsPassed() throws Exception{
+		SlapRestImpl impl = new SlapRestImpl();
+		Visitor v = Visitor.createVisitorFor("RandomUser10300");
+		
+		impl.setVisitorId(v.visitorId);
+		MultivaluedMap<String, String> queryParams = new MultivaluedHashMap<String, String>();
+		
+		SlapResponse response = impl.processRequest(queryParams);
+		
+		//select the first question's model
+		uriLog.clear();
+		response = impl.processRequest(queryParams);
+		
+		for(String uri: uriLog){
+			assertTrue(uri.contains("fq=language_s:en"));
+		}
 	}
 	
 
