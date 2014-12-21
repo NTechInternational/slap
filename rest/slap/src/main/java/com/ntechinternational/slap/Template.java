@@ -1,7 +1,6 @@
 package com.ntechinternational.slap;
 
 import java.text.BreakIterator;
-import java.text.CharacterIterator;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -24,6 +23,7 @@ public class Template{
 	public List<String> variablesWithoutValue;
 	public List<String> variablesWithDefaultValueOnly;
 	
+	private Map<String, SubstitutionSummary> summaries;
 	
 	final String template;
 	public StringBuilder output;
@@ -44,9 +44,11 @@ public class Template{
 	 * @param variableValues the map containing the value for the variable substitution
 	 * @return the string with variable replaced
 	 */
-	public String process(Map<String, String> variableValues, Map<String, String> defaultValues){
+	public String process(Map<String, String> variableValues, Map<String, String> defaultValues, List<SubstitutionSummary> substitutionSummary){
 		//match and record all optional and simple variables
 		Matcher matcher = variablePattern.matcher(template);
+		
+		summaries = new HashMap<String, SubstitutionSummary>();
 		
 		while(matcher.find()) matches.push(new Match(matcher.start(), matcher.end()));
 		
@@ -54,6 +56,7 @@ public class Template{
 		
 		postProcessTemplate(output);
 		
+		substitutionSummary.addAll(summaries.values());
 		
 		return output.toString();
 	}
@@ -211,6 +214,13 @@ public class Template{
 				if(value != null){
 					variablesWithDefaultValueOnly.add(variableName);
 				}
+			}
+			
+			if(!summaries.containsKey(variableName)){
+				SubstitutionSummary summary = new SubstitutionSummary();
+				summary.variable = variableName;
+				summary.value = value;
+				summaries.put(variableName, summary);
 			}
 			
 			if(value != null){

@@ -5,12 +5,15 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.Before;
 import org.junit.Test;
 
+import com.ntechinternational.slap.SubstitutionSummary;
 import com.ntechinternational.slap.Template;
 
 public class TemplateTest {
@@ -30,6 +33,7 @@ public class TemplateTest {
 		
 		Map<String, String> values = new HashMap<String, String>();
 		Map<String, String> defaultValues = new HashMap<String, String>();
+		List<SubstitutionSummary> changeSummary = new ArrayList<SubstitutionSummary>();
 		
 		values.put("&Name", "Ramesh");
 		values.put("&City", "Kathmandu");
@@ -37,7 +41,7 @@ public class TemplateTest {
 		defaultValues.put("&Country", "Nepal");
 		defaultValues.put("&City", "Pokhara");
 		
-		String output = template.process(values, defaultValues);
+		String output = template.process(values, defaultValues, changeSummary);
 		
 		//assert that all the variables are properly substituted
 		assertFalse(output.contains("&Name"));
@@ -53,6 +57,7 @@ public class TemplateTest {
 	public void givenATemplate_DefaultValuesAreUsedOnlyWhenValueIsNotProvided(){
 		Map<String, String> values = new HashMap<String, String>();
 		Map<String, String> defaultValues = new HashMap<String, String>();
+		List<SubstitutionSummary> changeSummary = new ArrayList<SubstitutionSummary>();
 		
 		values.put("&Name", "Ramesh");
 		values.put("&City", "Kathmandu");
@@ -60,7 +65,7 @@ public class TemplateTest {
 		defaultValues.put("&Country", "Nepal");
 		defaultValues.put("&City", "Pokhara");
 		
-		String output = template.process(values, defaultValues);
+		String output = template.process(values, defaultValues, changeSummary);
 		
 		//assert that all the default variables are used only when value is missing
 		assertFalse(output.contains("Pokhara"));
@@ -74,9 +79,11 @@ public class TemplateTest {
 	@Test
 	public void givenNoValueForAVariable_NoSubstitutionIsDone(){
 		Map<String, String> values = new HashMap<String, String>();
+		List<SubstitutionSummary> changeSummary = new ArrayList<SubstitutionSummary>();
+		
 		values.put("&Name", "Ramesh");
 		
-		String output = template.process(values, new HashMap<String, String>());
+		String output = template.process(values, new HashMap<String, String>(), changeSummary);
 		
 		assertTrue(output.contains("&ContactNum"));
 		assertTrue(output.contains("&City"));
@@ -105,13 +112,14 @@ public class TemplateTest {
 	@Test
 	public void givenImproperlyCasedString_CaseIsCorrected(){
 		String itemTemplate = "my sentence is incorrect.   i need it corrected.";
+		List<SubstitutionSummary> changeSummary = new ArrayList<SubstitutionSummary>();
 		
 		template = new Template(itemTemplate);
 		
 		Map<String, String> values = new HashMap<String, String>();
 		Map<String, String> defaultValues = new HashMap<String, String>();
 		
-		String output = template.process(values, defaultValues);
+		String output = template.process(values, defaultValues, changeSummary);
 		
 		assertEquals("My sentence is incorrect. I need it corrected.", output);
 	}
@@ -119,10 +127,11 @@ public class TemplateTest {
 	@Test
 	public void issueWithItem1013TestedWithSeparator(){
 		String itemTemplate = "Introduce a new &Customer and &RewardAction &RewardAmount &Reward.";
+		List<SubstitutionSummary> changeSummary = new ArrayList<SubstitutionSummary>();
 		Map<String, String> variables = Template.getVariablesFromString("&Customer:Member, &RewardAction:get, &RewardAmount:one, &Reward:month free (Introduce a new member and get one month free.)");
 		
 		template = new Template(itemTemplate);
-		String output = template.process(variables, new HashMap<String, String>());
+		String output = template.process(variables, new HashMap<String, String>(), changeSummary);
 		
 		assertFalse(output.contains("&RewardAction"));
 		
@@ -132,9 +141,10 @@ public class TemplateTest {
 	public void issueWithRemovalOfSpace(){
 		String itemTemplate = "[Beginning &StartTime and ending] [by &Deadline] &OfferAction &OfferingAmount &Offering [and &Activity,] and &Reward] [to &Beneficiary].";
 		Map<String, String> variables = Template.getVariablesFromString("&OfferAction:buy, &OfferingAmount:one, &Offering:product, &Reward:get a second one free (Buy one product and get a second one free.)");
+		List<SubstitutionSummary> changeSummary = new ArrayList<SubstitutionSummary>();
 		
 		template = new Template(itemTemplate);
-		String output = template.process(variables, new HashMap<String, String>());
+		String output = template.process(variables, new HashMap<String, String>(), changeSummary);
 		
 		assertEquals("Buy one product and get a second one free (Buy one product and get a second one free.).",
 				output);
