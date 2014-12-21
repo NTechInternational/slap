@@ -480,13 +480,14 @@ public class SlapRestImpl {
 		MultivaluedMap<String, String> paramsToAdd = new MultivaluedHashMap<String, String>();
 		paramsToAdd.putSingle("fq", "id:" + itemId);
 		String challengeResponse = new QueryManager().query(visitorId, queryParams, configDetails, configDetails.challengePath, paramsToAdd);
+		List<SubstitutionSummary> changeSummary = new ArrayList<SubstitutionSummary>();
 		
 		LogUtil.trace("Challenge Response: " + challengeResponse);
 		List<Map<String, Object>> challenges = XmlParser.transformDoc(challengeResponse, configDetails.backendDocNode, configDetails.responseMappings,"source|challenge");
 		if(challenges.size() == 1){
 			Template substitute = new Template(challenges.get(0).get("itemtemplate").toString());
 			
-			substitute.process(respondedVariables, Template.getVariablesFromString(challenges.get(0).get("variables").toString()));
+			substitute.process(respondedVariables, Template.getVariablesFromString(challenges.get(0).get("variables").toString()), changeSummary);
 			
 			//check if any variable value is missing
 			
@@ -554,10 +555,22 @@ public class SlapRestImpl {
 		changeSchemaForAnswers(response.questions); //transforms the schema of answers to JSON object
 		
 		for(Map<String, Object> challenge : challenges){
+			List<SubstitutionSummary> changeSummary = new ArrayList<SubstitutionSummary>();
 			challenge.put("itemtemplate", 
 					new Template(challenge.get("itemtemplate").toString())
-						.process(respondedValues, Template.getVariablesFromString(challenge.get("variables").toString())));
+						.process(respondedValues, Template.getVariablesFromString(challenge.get("variables").toString()), changeSummary));
+			
+			challenge.put("substitutionSummary", changeSummary);
 						//just providing
+		}
+		
+		for(Map<String, Object> question : response.questions){
+			List<SubstitutionSummary> changeSummary = new ArrayList<SubstitutionSummary>();
+			question.put("question", 
+					new Template(question.get("question").toString())
+						.process(respondedValues, Template.getVariablesFromString(question.get("question").toString()), changeSummary));
+			
+			question.put("substitutionSummary", changeSummary);
 		}
 		
 		
