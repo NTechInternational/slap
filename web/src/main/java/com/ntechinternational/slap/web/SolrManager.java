@@ -1,6 +1,5 @@
 package com.ntechinternational.slap.web;
 
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -9,18 +8,15 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.commons.configuration.XMLConfiguration;
 import org.apache.commons.configuration.tree.xpath.XPathExpressionEngine;
 import org.apache.commons.io.IOUtils;
-import org.xml.sax.InputSource;
-import org.xml.sax.XMLReader;
-import org.xml.sax.helpers.XMLReaderFactory;
-
-import java.util.regex.Matcher;
-import java.util.regex.Pattern; 
+import org.apache.logging.log4j.LogManager;
 
 public class SolrManager {
 	private static final String DEFAULT_CONFIG_LOCATION = "Map.xml";
@@ -35,6 +31,7 @@ public class SolrManager {
 	
 
 	public void loadConfiguration(String configLocation) throws ConfigurationException{
+		LogManager.getRootLogger().debug("Using configuration location " + configLocation);
 		config = new XMLConfiguration(configLocation);
 		config.setExpressionEngine(new XPathExpressionEngine());
 	}
