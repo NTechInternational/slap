@@ -2,9 +2,9 @@ package com.ntechinternational.slap.test;
 
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,7 +18,6 @@ import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.ntechinternational.slap.Database;
-import com.ntechinternational.slap.LogUtil;
 import com.ntechinternational.slap.QueryManager;
 import com.ntechinternational.slap.SlapResponse;
 import com.ntechinternational.slap.SlapRestImpl;
@@ -261,6 +260,136 @@ public class SlapResponseTest {
 		for(String uri: uriLog){
 			assertTrue(uri.contains("fq=language_s:en"));
 		}
+	}
+	
+	@Test
+	public void GivenBackIsPressed_PreviousSubmissionIsUndone() throws Exception {
+		//setup
+		SlapRestImpl impl = new SlapRestImpl();
+		Visitor v = Visitor.createVisitorFor("RandomUser10100");
+		
+		impl.setVisitorId(v.visitorId);
+		MultivaluedMap<String, String> queryParams = new MultivaluedHashMap<String, String>();
+		
+		SlapResponse response = impl.processRequest(queryParams);
+		
+		//select the first question's model
+		//i.e. BusinessModel:Membership
+		queryParams.putSingle("facet", "BusinessModel:Membership");
+		queryParams.putSingle("qid", "3000");
+		queryParams.putSingle("type", "submit");
+		uriLog.clear();
+		response = impl.processRequest(queryParams);
+		
+
+		queryParams.clear();
+		//select the first question's model
+		//i.e. BusinessModel:Membership
+		queryParams.putSingle("facet", "Goal:StealShare");
+		queryParams.putSingle("qid", "3001");
+		queryParams.putSingle("type", "submit");
+		uriLog.clear();
+		response = impl.processRequest(queryParams);
+		
+		for(String uri : uriLog){
+			assertTrue(uri.contains("StealShare"));
+		}
+		
+		//perform back action
+		queryParams.clear();
+		queryParams.putSingle("type", "back");
+		uriLog.clear();
+		response = impl.processRequest(queryParams);
+		
+		for(String uri : uriLog){
+			assertFalse(uri.contains("StealShare"));
+			assertTrue(uri.contains("Membership"));
+		}
+		
+		//perform another back action
+		uriLog.clear();
+		response = impl.processRequest(queryParams);
+		
+		for(String uri : uriLog){
+			assertFalse(uri.contains("Membership"));
+		}
+		
+		
+		queryParams.clear();
+		queryParams.putSingle("type", "select");
+		queryParams.putSingle("itemId", "1012");
+		uriLog.clear();
+		response = impl.processRequest(queryParams);
+		
+		boolean containsItemId = false;
+		for(String uri : uriLog){
+			if(uri.contains("1012")){
+				containsItemId = true;
+				break;
+			}
+		}
+		
+		assertTrue(containsItemId);
+		
+		
+		//perform back action
+		queryParams.clear();
+		queryParams.putSingle("type", "back");
+		uriLog.clear();
+		response = impl.processRequest(queryParams);
+		
+		for(String uri : uriLog){
+			assertFalse(uri.contains("1012"));
+		}
+	}
+	
+	@Test
+	public void GivenResetIsPressed_InteractionLogIsCleared() throws Exception {
+		//setup
+		SlapRestImpl impl = new SlapRestImpl();
+		Visitor v = Visitor.createVisitorFor("RandomUser10103");
+		
+		impl.setVisitorId(v.visitorId);
+		MultivaluedMap<String, String> queryParams = new MultivaluedHashMap<String, String>();
+		
+		SlapResponse response = impl.processRequest(queryParams);
+		
+		//select the first question's model
+		//i.e. BusinessModel:Membership
+		queryParams.putSingle("facet", "BusinessModel:Membership");
+		queryParams.putSingle("qid", "3000");
+		queryParams.putSingle("type", "submit");
+		uriLog.clear();
+		response = impl.processRequest(queryParams);
+		
+
+		queryParams.clear();
+		//select the first question's model
+		//i.e. BusinessModel:Membership
+		queryParams.putSingle("facet", "Goal:StealShare");
+		queryParams.putSingle("qid", "3001");
+		queryParams.putSingle("type", "submit");
+		uriLog.clear();
+		response = impl.processRequest(queryParams);
+		
+		for(String uri : uriLog){
+			assertTrue(uri.contains("StealShare"));
+		}
+		
+		//perform back action
+		queryParams.clear();
+		queryParams.putSingle("type", "startOver");
+		uriLog.clear();
+		response = impl.processRequest(queryParams);
+		
+		for(String uri : uriLog){
+			assertFalse(uri.contains("StealShare"));
+			assertFalse(uri.contains("Membership"));
+		}
+		
+		assertTrue(Database.getCollection("interactionLog").findOne(new BasicDBObject("visitorId", v.visitorId)) == null);
+		
+		
 	}
 	
 

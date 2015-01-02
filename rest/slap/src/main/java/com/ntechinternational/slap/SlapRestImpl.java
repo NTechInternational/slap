@@ -22,6 +22,7 @@ import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriInfo;
 
 import org.apache.logging.log4j.LogManager;
+import org.bson.types.ObjectId;
 
 import threescale.v3.api.AuthorizeResponse;
 import threescale.v3.api.ParameterMap;
@@ -51,7 +52,7 @@ public class SlapRestImpl {
 	private static final String MAP_FILENAME = "Map.xml";
 	private static final String UNSUPPORTED_API_VERSION = "API Version unsupported, please provide correct apiversion parameter";
 	
-	enum Interaction { Submit, Select, Done, StartOver, Default };
+	enum Interaction { Submit, Select, Done, StartOver, Default, Back };
 	
 	private String visitorId = null;
 	private ConfigurationMap configDetails = null;
@@ -182,6 +183,9 @@ public class SlapRestImpl {
 		case StartOver:
 			resetAllInteraction(response, queryParams, configDetails);
 			break;
+		case Back:
+			performBackInteraction(response, queryParams, configDetails);
+			break;
 		
 		default:
 			defaultInteraction(response, queryParams, configDetails);
@@ -192,6 +196,42 @@ public class SlapRestImpl {
 
 	}
 	
+	private void performBackInteraction(SlapResponse response,
+			MultivaluedMap<String, String> queryParams,
+			ConfigurationMap configDetails2) throws Exception {
+		
+		BasicDBObject interactionObject = (BasicDBObject) Database.getCollection("interactionLog").findOne(new BasicDBObject("visitorId", visitorId));
+		LogUtil.debug("Found following interaction log " + interactionObject);
+		if(interactionObject != null){
+			BasicDBList list = (BasicDBList) interactionObject.get("log");
+			if(list.size() > 0){
+				BasicDBObject intObj = (BasicDBObject) list.get(list.size() - 1);
+				if(intObj.getString("type").equals("select")){
+					//remove selection
+					BasicDBObject query = new BasicDBObject("visitorId", visitorId);
+					BasicDBObject updateInfo = new BasicDBObject("$unset", new BasicDBObject("selectedChallenge", ""));
+					
+					Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME).update(query, updateInfo);
+					
+				}
+				else if(intObj.getString("type").equals("submit")){
+					//remove object
+					ObjectId id = intObj.getObjectId("id");
+					
+					LogUtil.trace("Removing " + id);
+					Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).findAndRemove(new BasicDBObject("_id", id));
+					
+				}
+				
+				list.remove(list.size() - 1);
+				
+				Database.getCollection("interactionLog").update(new BasicDBObject("visitorId", visitorId), interactionObject);
+			}
+		}
+		
+		defaultInteraction(response, queryParams, configDetails);
+	}
+
 	private void defaultInteraction(SlapResponse response,
 			MultivaluedMap<String, String> queryParams,
 			ConfigurationMap configDetails) throws Exception {
@@ -255,6 +295,12 @@ public class SlapRestImpl {
 
 		
 		saveAllSessionInformation(Database.MONGO_VISITOR_SESSION_COLLECTION_NAME, queryParams.getFirst("text"));
+		clearInteractionLog();
+	}
+
+	private void clearInteractionLog() throws UnknownHostException {
+		Database.getCollection("interactionLog").findAndRemove(new BasicDBObject("visitorId", visitorId));
+		
 	}
 
 	/**
@@ -307,6 +353,7 @@ public class SlapRestImpl {
 		Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME).update(visitorQuery, updateInfo);
 		
 		defaultInteraction(response, queryParams, configDetails);
+		clearInteractionLog();
 		
 	}
 
@@ -319,6 +366,8 @@ public class SlapRestImpl {
 		BasicDBObject updateInfo = new BasicDBObject("$set", new BasicDBObject("selectedChallenge", 
 										new BasicDBObject(PARAM_ITEM_ID, itemId)));
 		
+		
+		logInteraction("select", null, visitorId);
 		
 		Database.getCollection(Database.MONGO_VISITOR_COLLECTION_NAME).update(visitorToUpdate, updateInfo);
 		
@@ -741,6 +790,11 @@ public class SlapRestImpl {
 		BasicDBObject query = new BasicDBObject("visitorId", visitorId).append("questionId", questionId);
 		
 		Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).update(query, objectToStore, true, false);
+		objectToStore = (BasicDBObject) Database.getCollection(Database.MONGO_QUESTION_COLLECTION_NAME).findOne(query);
+		
+		
+		//log to interaction dbase
+		logInteraction("submit", objectToStore.get("_id"), visitorId);
 		
 		SlapResponse response = new SlapResponse();
 		response.visitorId = visitorId;
@@ -760,6 +814,26 @@ public class SlapRestImpl {
 		//Question.storeQuestion(visitorId, queryParams);
 	}
 	
+	private void logInteraction(String interactionType, Object objectId, String visitorId) throws UnknownHostException {
+		BasicDBObject query = new BasicDBObject("visitorId", visitorId);
+		BasicDBObject currentObject = new BasicDBObject("visitorId", visitorId);
+		BasicDBList intLog = new BasicDBList();
+		
+		BasicDBObject dbObject = (BasicDBObject) Database.getCollection("interactionLog").findOne(query);
+		if(dbObject != null){
+			intLog = (BasicDBList) dbObject.get("log");
+			
+		}
+		currentObject.append("log", intLog);
+		intLog.add(new BasicDBObject("id", objectId).append("type", interactionType));
+		
+		if(dbObject == null)
+			Database.getCollection("interactionLog").insert(currentObject);
+		else
+			Database.getCollection("interactionLog").update(query, currentObject);
+		
+	}
+
 	/*private Map<String, Object> getNextQuestion(String questionId,List<Map<String, Object>> questions) throws UnknownHostException {
 		
 		
