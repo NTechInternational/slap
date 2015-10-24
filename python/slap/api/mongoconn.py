@@ -7,7 +7,7 @@ class MongoConnection:
 	class Collections:
 		VISITOR = "visitors"
 		QUESTION = "questions"
-		VISITOR = "visitorSession"
+		VISITOR_SESSION = "visitorSession"
 		VISITOR_SESSION_START_OVER = "visitorSessionStartOver"
 		TEMP_QUESTION = "tempQuestions" #looks like temp question and challenge isn't required
 		TEMP_CHALLENGE = "tempChallenges"
@@ -18,9 +18,8 @@ class MongoConnection:
 
 	def store_in_collection(self, collection_name, data):
 		try:
-			collection = self.get_collection(collection_name)
-			
-		except Exception, e:
+			collection = self.get_collection(collection_name)	
+		except Exception as e:
 			raise e
 
 	def get_collection(self, collection_name):
@@ -36,13 +35,12 @@ class MongoConnection:
 		collection_exists = False
 
 		try:
-			collection_exists = db.collection_names(false)
-									.index(collection_name) >= 0
-			 
-		except ValueError, e:
+			collection_exists = db.collection_names(False).index(collection_name) >= 0 
+		except ValueError as e:
 			#if it isn't in the database ignore the error
+			logging.info('Ignoring ValueError because if collection doesn\'t exist we might have to create one')
 
-		if collection_exists:
+		if collection_exists == True:
 			return db[collection_name]
 		else:
 			#create a collection and set the indices
@@ -58,7 +56,17 @@ class MongoConnection:
 		return self.mongo_client.get_database(self.MONGO_DB_NAME)
 
 	def __setup_indices(self, collection, collection_name):
-		if(collection_name == self.QUESTION_COLLECTION_NAME)
+		#Consider using dictionary, right now the method is simple enough for if..elif
+		if collection_name == self.Collections.QUESTION:
+			#collection.create_index()
+			logging.info('Setting up indices for %s collection.' % collection_name)
+		elif collection_name == self.Collections.VISITOR:
+			#collection.create_index()
+			logging.info('Setting up indices for %s collection.' % collection_name)
+
+		logging.warn('Indices for the collection have not been setup properly' +
+			'We will have to set it up some day')
+		return collection
 
 
 
