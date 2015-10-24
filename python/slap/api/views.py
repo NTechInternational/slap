@@ -2,6 +2,7 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from api import models
 
+
 def get_visitor_id(request):
 	"""
 	returns the visitor for a given user id. if invalid user id is provided
@@ -21,3 +22,9 @@ def get_visitor_id(request):
 		visitor_response = visitor.to_json()
 
 	return JsonResponse(visitor_response)
+
+def process_request(request):
+	"""
+	processes the visitors interaction request
+	"""
+	return JsonResponse(models.Error('Work in progress').to_json())

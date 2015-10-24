@@ -2,6 +2,7 @@
 #act as a model
 import random
 import string
+import logging
 from api.mongoconn import MongoConnection
 
 class Visitor:
@@ -73,7 +74,10 @@ class Visitor:
 		visitor = MongoConnection().get_collection(cls.COLLECTION).find_one(filter)
 
 		if visitor is None:
+			logging.info('Couldn\'t find record with filter ' + filter)
 			return None
+
+		logging.info('Match found')
 
 		return Visitor(visitor_id = visitor[cls.Meta.ID_KEY], user_id = visitor[cls.Meta.USER_ID_KEY])
 

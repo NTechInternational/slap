@@ -19,5 +19,6 @@ from api import views
 
 urlpatterns = [
     #url(r'^admin/', include(admin.site.urls)),
-    url(r'^api/getvisitorid', views.get_visitor_id),
+    url(r'^rest/getvisitorid', views.get_visitor_id),
+    url(r'^rest/processrequest', views.process_request),
 ]

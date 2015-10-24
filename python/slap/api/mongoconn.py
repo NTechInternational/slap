@@ -1,6 +1,7 @@
 from pymongo import MongoClient
 from pymongo.errors import InvalidName
 import logging
+from api.slapsettings import SlapConfig
 
 
 class MongoConnection:
@@ -13,8 +14,8 @@ class MongoConnection:
 		TEMP_CHALLENGE = "tempChallenges"
 		
 	MONGO_DB_NAME = "slap"
+	logging.info('Connecting to mongo at %s:%d' % (SlapConfig.Mongo.server_address, SlapConfig.Mongo.server_port))
 	mongo_client = MongoClient()
-	print(mongo_client)
 
 	def store_in_collection(self, collection_name, data):
 		try:
