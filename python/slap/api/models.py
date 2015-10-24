@@ -28,11 +28,11 @@ class Visitor:
 		"""
 		visitorCollection = MongoConnection().get_collection(self.COLLECTION)
 
-		visitorCollection.replace_one({self.Meta.ID_KEY : self.visitor_id}, 
-									self.__to_mongo_representation(),
+		visitorCollection.replace_one({self.Meta.USER_ID_KEY : self.user_id}, 
+									self.to_json(),
 									upsert = True)
 
-	def __to_mongo_representation(self):
+	def to_json(self):
 		"""
 		converts the object to mongo representation.
 		"""
@@ -40,11 +40,11 @@ class Visitor:
 
 
 	@classmethod
-	def create(cls, visitor_id):
+	def create(cls, user_id):
 		"""
-		creates a visitor with provided visitor_id and random user id
+		creates a visitor with provided user id and random visitor id
 		"""
-		return Visitor(visitor_id, Visitor.__generate_random_id())
+		return Visitor(user_id = user_id, visitor_id = Visitor.__generate_random_id())
 
 
 	@classmethod
@@ -72,7 +72,10 @@ class Visitor:
 		"""
 		visitor = MongoConnection().get_collection(cls.COLLECTION).find_one(filter)
 
-		return Visitor(visitor[cls.Meta.ID_KEY], visitor[cls.Meta.USER_ID_KEY])
+		if visitor is None:
+			return None
+
+		return Visitor(visitor_id = visitor[cls.Meta.ID_KEY], user_id = visitor[cls.Meta.USER_ID_KEY])
 
 
 	@staticmethod
@@ -90,3 +93,16 @@ class Visitor:
 		"""
 		return ''.join(random.SystemRandom().choice(chars) for _ in range(size))
 
+
+class Error:
+	class Meta:
+		ERROR_KEY = 'errorDescription'
+
+	def __init__(self, error_description = ''):
+		"""
+		Initializes an error object
+		"""
+		self.error_description = error_description
+
+	def to_json(self):
+		return { self.Meta.ERROR_KEY : self.error_description }
