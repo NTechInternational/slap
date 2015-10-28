@@ -1,6 +1,7 @@
 Django==1.8.5
 djangorestframework==3.2.4
 djangotoolbox==1.8.0
+lxml==3.4.4
 pymongo==3.0.3
-ThreeScalePY==1.0
+ThreeScalePY==2.5
 wheel==0.24.0
