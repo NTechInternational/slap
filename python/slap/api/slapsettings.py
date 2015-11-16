@@ -26,20 +26,20 @@ class SlapConfig:
         # set the key value pair in the params dictionary, if the value
         # should always be sent
         params = {
-            'businessmodel' : 'All',
             'wt' : 'json'
         }
         #set the key value pair in default params, if it is overridable
         default_params = {
             'language' : 'en',
             'sort' : 'priority_i desc',
-            'rows' : '5'
+            'rows' : '5',
+            'businessmodel' : 'All' 
         }
 
         #SOLR supports two type of query one standard query other filter query
         #Filter Query don't affect the score
         #Add the filter query params if 
-        filter_query_params = [ 'language_s' ]
+        filter_query_params = [ 'language_s', 'BusinessModel_ss' ]
 
 
         #Solr response map, maps the solr type to webservice type

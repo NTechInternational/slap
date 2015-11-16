@@ -11,15 +11,19 @@ class Visitor:
 	class Meta:
 		ID_KEY = 'visitorId'
 		USER_ID_KEY = 'userId'
+		SELECTED_CHALLENGE_KEY = 'selectedChallenge'
 
 
-	def __init__(self, visitor_id = None, user_id = None):
+	def __init__(self, visitor_id = None, user_id = None, selected_challenge_id = None):
 		"""
 		This method instantiates a visitor object by taking visitor_id and
 		user_id as optional param
 		"""
 		self.visitor_id = visitor_id
 		self.user_id = user_id
+		self.selected_challenge_id = selected_challenge_id
+
+
 
 	def save(self):
 		"""
@@ -33,11 +37,20 @@ class Visitor:
 									self.to_json(),
 									upsert = True)
 
+	def select_challenge(self, challenge_id):
+		"""
+		selects a new challenge for a given user
+		"""
+		self.selected_challenge_id = challenge_id
+		self.save()
+
 	def to_json(self):
 		"""
 		converts the object to mongo representation.
 		"""
-		return {self.Meta.ID_KEY : self.visitor_id, self.Meta.USER_ID_KEY : self.user_id}
+		return {self.Meta.ID_KEY : self.visitor_id,
+				 self.Meta.USER_ID_KEY : self.user_id,
+				 self.Meta.SELECTED_CHALLENGE_KEY : self.selected_challenge_id}
 
 
 	@classmethod
@@ -74,12 +87,13 @@ class Visitor:
 		visitor = MongoConnection().get_collection(cls.COLLECTION).find_one(filter)
 
 		if visitor is None:
-			logging.info('Couldn\'t find record with filter ' + filter)
+			logging.info('Couldn\'t find record with filter ')
 			return None
 
 		logging.info('Match found')
-
-		return Visitor(visitor_id = visitor[cls.Meta.ID_KEY], user_id = visitor[cls.Meta.USER_ID_KEY])
+		return Visitor(visitor_id = visitor[cls.Meta.ID_KEY],
+		 				user_id = visitor[cls.Meta.USER_ID_KEY],
+		 				selected_challenge_id = visitor[cls.Meta.SELECTED_CHALLENGE_KEY])
 
 
 	@staticmethod
@@ -110,3 +124,34 @@ class Error:
 
 	def to_json(self):
 		return { self.Meta.ERROR_KEY : self.error_description }
+
+
+class SlapResponse:
+
+	class Meta:
+		ID_KEY = 'visitorId'
+		ITEMS_KEY = 'items'
+		QUESTIONS_KEY = 'questions'
+
+	def __init__(self, visitor, questions = None, items = None):
+		"""
+		"""
+		self.visitor = visitor
+		self.questions = questions
+		self.items = items
+
+	def set_questions(self, questions):
+		self.questions = questions
+
+	def set_items(self, items):
+		self.items = items
+
+	def to_json(self):
+		ret_val = {self.Meta.ID_KEY : self.visitor.visitor_id}
+		if self.items != None:
+			ret_val[self.Meta.ITEMS_KEY] = self.items
+
+		if self.questions != None:
+			ret_val[self.Meta.QUESTIONS_KEY] = self.questions
+
+		return ret_val

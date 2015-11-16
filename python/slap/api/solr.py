@@ -102,13 +102,16 @@ class SolrQuery:
         if url.endswith('AND '):
             url = url[:-4]
 
+        if not url:
+            url = '*:*'
+
         url = parse.urlencode({self.FILTER_KEY : url})
         return url
 
     def __get_query_filter_param(self, params):
         url = ''
         for key, value in params.items():
-            url = url + parse.urlencode({self.QUERY_FILTER_KEY : (key + self.FILTER_SEPARATOR + value)})
+            url = url + parse.urlencode({self.QUERY_FILTER_KEY : (key + self.FILTER_SEPARATOR + value)}) + '&'
 
         return url
 

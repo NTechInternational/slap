@@ -1,6 +1,8 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from api import models
+from api.core import Interaction
+from api.threescale import ThreeScale
 
 
 def get_visitor_id(request):
@@ -27,4 +29,12 @@ def process_request(request):
 	"""
 	processes the visitors interaction request
 	"""
-	return JsonResponse(models.Error('Work in progress').to_json())
+	#determine the type of interaction
+	interaction = Interaction(request, auth_provider = ThreeScale())
+
+	if interaction.authenticate():
+		if interaction.ensure_user_is_valid():
+			#perform valid interaction
+			interaction.route()
+
+	return JsonResponse(interaction.response_to_json())
