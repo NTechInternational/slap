@@ -2,17 +2,17 @@
 
 #### API Description
 
-* /rest/getvisitorid?userid=<User ID> : This api registers a given user id and returns a valid _visitorId_, if the user id has already been registered it returns the existing _visitorId_ for the user
+* /rest/getvisitorid?userid={User ID} : This api registers a given user id and returns a valid _visitorId_, if the user id has already been registered it returns the existing _visitorId_ for the user
 
-* /rest/processrequest?visitorId=<Visitor Id>&type=<interaction type> : This api performs various actions based on the interaction type. Additional params supported for interactions are listed below.
+* /rest/processrequest?visitorId={Visitor Id}&type={interaction type} : This api performs various actions based on the interaction type. Additional params supported for interactions are listed below.
   * Select interaction:
     * itemid: the challenge that is being selected
   * Submit interaction:
-    * var: <Variable Name>:<Variable value>
+    * var: {Variable Name}:{Variable value}
 
       Multiple occurrence of _var_ parameter is supported. Each var parameter should provide the variable and the value of it.
 
-    * facet: <Facet Name>:<Facet value>
+    * facet: {Facet Name}:{Facet value}
 
       Multiple occurrence of _facet_ parameter is supported. Each facet parameter should provide the facet and the value of it.
 
