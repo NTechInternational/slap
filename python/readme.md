@@ -49,7 +49,12 @@
     * return response 
 
 * ##### Back Transaction Type:
-   *
+    * get the interaction log for the visitor
+    * pop the last interaction
+    * if select interaction, overwrite the selected challenge id
+    * else if submit interaction delete the submitted challenge and activate the overwritten submission, unset the overwritten flag.
+    * update the interaction log.
+
 
 #### Mongo DB Collections and data:
 
@@ -70,6 +75,7 @@
                  {variableName : value}, note variableName has '&' prepended
       facets: list of facets selected stored as
                  {facetName : value}
+      isOverwritten : boolean indicating whether the question is valid or not, used when restoring the back.
 ```
 
 * __visitorSession__: This collection stores information about the user's submission for the session
@@ -84,4 +90,18 @@
 
 * __visitorSessionStartOver__: This collection stores information regarding any incomplete sessions that user made. Session information is added when reset interaction is performed. The structure is same as visitor session
 
+* __interactionLog__: This collection stores information regarding any interaction performed by the user. Interaction log is used to support back interaction
 
+```
+      visitorId: Session information of the visitor
+      log: List of interactions done with the system
+           {type: type of interaction, previousChallenge : previously selected challenge, previous_submission_id : id of previous submission which is overwritten}
+```
+
+#### Test Cases
+
+
+
+---------------------------------------
+
+#### Admin Site Description
