@@ -1,6 +1,7 @@
 from string import Template
 import re
 
+
 class Transformer:
 
     @staticmethod
@@ -50,6 +51,7 @@ class VariableTemplate(Template):
     idpattern = r'[\w\d]+'
 
 
+
 class ItemTransformer:
 
     ITEM_TEMPLATE_KEY = 'itemtemplate'
@@ -65,13 +67,19 @@ class ItemTransformer:
         :param answered_variables: the list of variables for which an answer has been provided.
         :return:
         """
+        if answered_variables is None:
+            answered_variables = {}
+
         for item in self.items:
-            item[self.VARIABLE_KEY] = self.__get_defaults(item[self.VARIABLE_KEY])
-            answered_variables = item[self.VARIABLE_KEY]
-            self.__fill_values(item, answered_variables)
+            variables = self.__get_defaults(item[self.VARIABLE_KEY])
+            variables.update(answered_variables)
+            item[self.VARIABLE_KEY] = variables
+            self.__fill_values(item, variables, answered_variables)
             self.__correct_grammar(item)
 
-    def __fill_values(self, item, answered_variables):
+        return {}
+
+    def __fill_values(self, item, variables, answered_variables):
         """
         Each item template consists of
         variables text prefixed by '&'
@@ -85,9 +93,37 @@ class ItemTransformer:
         <punctuation> :== <dot>|<comma>
         """
         # discover all variables
+        substitution_summary = []
+        variables_with_defaults = []
+        variables_without_values = []
+
         item_template = item[self.ITEM_TEMPLATE_KEY]
 
-        item[self.ITEM_TEMPLATE_KEY] = VariableTemplate(item_template).safe_substitute(answered_variables)
+        VARIABLE_REGEX = '&(\w+)'
+        matches = []
+
+        for match in re.finditer(VARIABLE_REGEX, item_template):
+            matches.append(match)
+
+        matches.reverse()
+
+        for match in matches:
+            variable = item_template[match.start(1):match.end(1)]
+            if variable in variables:
+                substituting_value = variables[variable]
+                item_template = item_template[:match.start()] + substituting_value + item_template[match.end():]
+                substitution_summary.append({'variable' : '&' + variable, 'value' : substituting_value })
+                if variable not in answered_variables:
+                    variables_with_defaults.append(variable)
+            else:
+                variables_without_values.append(variable)
+
+        # item[self.ITEM_TEMPLATE_KEY] = VariableTemplate(item_template).safe_substitute(answered_variables)
+
+        item['defaultsOnly'] = variables_with_defaults
+        item['missingVariables'] = variables_without_values
+        item['substitutionSummary'] = substitution_summary
+        item[self.ITEM_TEMPLATE_KEY] = item_template
 
         # remove any variables in optional string
         self.__remove_optionals(item)

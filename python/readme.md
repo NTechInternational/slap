@@ -19,7 +19,7 @@
 #### Description of various interactions:
 
 * ##### No transaction type in the URL:
-    * __Challenge has been selected perviously__: This works similarly to __Select__ interaction.
+    * __Challenge has been selected previously__: This works similarly to __Select__ interaction.
     * __Facets have been selected previously__: Filter based on the facets and return a row of question and challenge
     * __Else__:
 

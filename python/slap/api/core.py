@@ -3,6 +3,7 @@ import pdb
 from api.solr import SolrQuery
 from api.transformers import Transformer, ItemTransformer
 
+
 class Interaction:
     VISITOR_PARAM_KEY = 'visitorid'
     APP_ID_PARAM_KEY = 'appid'
@@ -47,7 +48,7 @@ class Interaction:
             app_key = self.request.GET[self.APP_KEY_PARAM_KEY]
 
         if not self.auth_provider.authorize():
-            self.response = Error(auth_provider.description)
+            self.response = Error(self.auth_provider.description)
 
         return self.auth_provider.authorized
 
@@ -110,22 +111,25 @@ class Interaction:
                 self.user.select_challenge(challenge_id)
 
                 #b. query the database to get the missing variables in the challenge (item)
-                items = SolrQuery(query_type = SolrQuery.CHALLENGE_QUERY, query_params = {'rows' : 5, 'id' : str(challenge_id)}).query()
+                items = SolrQuery(query_type = SolrQuery.CHALLENGE_QUERY, query_params = {'rows' : 1, 'id' : str(challenge_id)}).query()
                 answered_variables = self.user.get_answered_variables()
-                missing_vars = ItemTransformer(items = items).transform(answered_variables = answered_variables)
+                ItemTransformer(items = items).transform(answered_variables = answered_variables)
                 self.response.set_items(items)
 
-                #c. query the database for question with the missing variables
-                query_params = {}
-                if 'novalue' in missing_vars:
-                    query_params['variable'] = self.get_variable_query_string(missing_vars['novalue'])
-                questions = SolrQuery(query_params = query_params).query()
+                # c & d. query the database for question with the missing variables
+                #       query the database for question with default variables
+                # since we are selecting only one item we can select the variables with missing and default value for it
+                variables_lists = [items[0]['missingVariables'], items[0]['defaultsOnly']]
+                questions = []
 
-                #d. query the database for question with default variables
-                query_params = {}
-                if 'defaultsonly' in missing_vars :
-                    query_params['variable'] = self.get_variable_query_string(missing_vars['defaultsonly'])
+                for missing_vars in variables_lists:
+                    query_params = {}
+
+                    if len(missing_vars) > 0:
+                        query_params['variables'] = self._get_variable_query_string(missing_vars)
+
                     questions.extend(SolrQuery(query_params = query_params).query())
+
 
                 #e. return response
                 Transformer.convert_answers_to_proper_format(questions)
@@ -135,6 +139,23 @@ class Interaction:
                 self.has_error = True
                 self.response = Error('Invalid challenge was selected')
 
+    def _get_variable_query_string(self, variables):
+        """
+        Creates a query string that can be passed to the SOLR Query object
+        :param variables: the list of variables that are to be added to the query string
+        :return: the query string filter
+        """
+        query_string = '('
+        variable_length = len(variables) - 1
+        for index in range(0, variable_length + 1):
+            query_string += '&' + variables[index]
+            #append or for all but the last
+            if index < variable_length:
+                query_string += " OR "
+        query_string += ')'
+
+
+        return query_string
 
 
     def __parse_int(self, string_value):
