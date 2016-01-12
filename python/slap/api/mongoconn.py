@@ -55,15 +55,15 @@ class MongoConnection:
         return self.mongo_client.get_database(self.MONGO_DB_NAME)
 
     def __setup_indices(self, collection, collection_name):
-        #Consider using dictionary, right now the method is simple enough for if..elif
+        # Consider using dictionary, right now the method is simple enough for if..elif
         if collection_name == self.Collections.QUESTION:
-            #collection.create_index()
+            # collection.create_index()
             logging.info('Setting up indices for %s collection.' % collection_name)
         elif collection_name == self.Collections.VISITOR:
-            #collection.create_index()
+            # collection.create_index()
             logging.info('Setting up indices for %s collection.' % collection_name)
 
-        logging.warn('Indices for the collection have not been setup properly' +
+        logging.warning('Indices for the collection have not been setup properly' +
             'We will have to set it up some day')
         return collection
 

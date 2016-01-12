@@ -28,28 +28,34 @@ class SlapConfig:
         params = {
             'wt' : 'json'
         }
-        #set the key value pair in default params, if it is overridable
+        # set the key value pair in default params, if it is overridable
         default_params = {
             'language' : 'en',
             'sort' : 'priority_i desc',
             'rows' : '5',
-            'businessmodel' : 'All' 
+            'businessmodel' : 'All'
         }
 
-        #SOLR supports two type of query one standard query other filter query
-        #Filter Query don't affect the score
-        #Add the filter query params if 
-        filter_query_params = [ 'language_s', 'BusinessModel_ss' ]
+        # SOLR supports two type of query one standard query other filter query
+        # Filter Query don't affect the score
+        # Add the filter query params if
+        filter_query_params = [ 'language_s', 'BusinessModel_ss', 'Goal_ss', 'Motivation_ss', 'RewardType_ss' ]
+
+        # equivalent params stores the params that must be treated as the same
+        # for instance business model, reward type and goal all 'Facet' types
+        # so presence of any one type should remove the default value
+        equivalent_params = {
+            'facet_params' : ['businessmodel' , 'rewardtype', 'goal', 'motivation']
+        }
 
 
-        #Solr response map, maps the solr type to webservice type
+        # Solr response map, maps the solr type to webservice type
         solr_response_map = {
             'path' : ['response', 'docs'], #this is an ordered path so is equivalent to response.docs
             'map' : {
                 'BusinessModel_ss' : 'businessmodel',
                 'Goal_ss' : 'goal',
                 'Motivation_ss' : 'motivation',
-                'RewardType_ss' : 'rewardtype',
                 'id' : 'id',
                 'source' : 'sourcetype', #values would be questions/item note:item is same as challenge
                 'question_t' : 'question',
@@ -57,7 +63,6 @@ class SlapConfig:
                 'Group_i' : 'group',
                 'type_s' : 'type',
                 'answers_t' : 'answers',
-                'Template_t' : 'itemtemplate',
                 'Variables_s' : 'variables',
                 'Template_t' : 'itemtemplate',
                 'RewardType_ss' : 'rewardtype',
@@ -65,7 +70,7 @@ class SlapConfig:
             } 
         }
 
-        #inverse map of response map
+        # inverse map of response map
         __solr_inv_map = {}
 
         @classmethod
