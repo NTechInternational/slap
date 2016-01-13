@@ -178,33 +178,56 @@ class Interaction:
             answered_variables = self.user.get_answered_variables()
             selected_facets = self.user.get_selected_facets()
 
-            # TODO: move code Question and Item Query block to a common method
+            # TODO: Code Refactor, too many duplicates, move code Question and Item Query block to a common method
             # a lot of code such as getting the challenge and question is duplicate
 
             self.response = SlapResponse(visitor = self.user)
 
-            items = SolrQuery(query_type = SolrQuery.CHALLENGE_QUERY,
-                              query_params = selected_facets).query()
-            ItemTransformer(items = items).transform(answered_variables = answered_variables)
-            self.response.set_items(items)
+            item_id = None
 
-            variables_lists = [items[0]['missingVariables'], items[0]['defaultsOnly']]
-            questions = []
+            if self.CHALLENGE_PARAM_KEY in getRequest:
+                challenge_id = getRequest[self.CHALLENGE_PARAM_KEY]
+                (success, challenge_id) = self.__parse_int(challenge_id)
+                if success:
+                    item_id = challenge_id
 
-            for missing_vars in variables_lists:
-                query_params = {}
+            if item_id is not None:
+                items = SolrQuery(query_type = SolrQuery.CHALLENGE_QUERY,
+                                  query_params = {'rows' : 1, 'id' : str(challenge_id), 'businessmodel' : '*'}).query()
+                answered_variables = self.user.get_answered_variables()
+                ItemTransformer(items = items).transform(answered_variables = answered_variables)
+                self.response.set_items(items)
 
-                if len(missing_vars) > 0:
-                    for var in missing_vars:
-                        var = '&' + var
-                    query_params['variables'] = Filter(missing_vars)
+                # c & d. query the database for question with the missing variables
+                #       query the database for question with default variables
+                # since we are selecting only one item we can select the variables with missing and default value for it
+                variables_lists = [items[0]['missingVariables'], items[0]['defaultsOnly']]
+                questions = []
 
-                questions.extend(SolrQuery(query_params = query_params).query())
+                for missing_vars in variables_lists:
+                    query_params = {}
 
+                    if len(missing_vars) > 0:
+                        for var in missing_vars:
+                            var = '&' + var
+                        query_params['variables'] = Filter(missing_vars)
 
-            # e. return response
-            Transformer.convert_answers_to_proper_format(questions)
-            self.response.set_questions(questions)
+                    questions.extend(SolrQuery(query_params = query_params).query())
+                    if len(questions) > 1:
+                        questions = questions[:1] # select only one question when item id is provided
+                        break
+
+                Transformer.convert_answers_to_proper_format(questions)
+                self.response.set_questions(questions)
+            else:
+                items = SolrQuery(query_type = SolrQuery.CHALLENGE_QUERY,
+                                  query_params = selected_facets).query()
+                ItemTransformer(items = items).transform(answered_variables = answered_variables)
+                self.response.set_items(items)
+
+                questions = SolrQuery().query() # fetch default questions
+                Transformer.convert_answers_to_proper_format(questions)
+                self.response.set_questions(questions)
 
     def __get_name_value_from_string(self, variable = ''):
         """

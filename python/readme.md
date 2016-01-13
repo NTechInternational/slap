@@ -40,6 +40,8 @@
 * ##### Submit Transaction Type:
     * get all facets and variables submission for the question
     * save the variable and question
+    * if itemId hasn't been passed query the database for items with selected facets and default questions
+    * else if itemId is being submitted in the transaction fetch the item and only one question with missing variables
 
 * ##### Select Transaction Type:
     * save the selected transaction in selectedChallenge
