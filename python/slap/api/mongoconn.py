@@ -6,6 +6,7 @@ from api.slapsettings import SlapConfig
 
 class MongoConnection:
     class Collections:
+        INTERACTION_LOG = "interactionLog"
         VISITOR = "visitors"
         QUESTION = "questions"
         VISITOR_SESSION = "visitorSession"

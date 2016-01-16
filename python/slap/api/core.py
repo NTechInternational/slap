@@ -1,4 +1,4 @@
-from api.models import Visitor, Error, SlapResponse, Question
+from api.models import Visitor, Error, SlapResponse, Question, InteractionLog, VisitorSessionInfo
 import pdb
 from api.solr import SolrQuery, Filter
 from api.transformers import Transformer, ItemTransformer
@@ -75,7 +75,7 @@ class Interaction:
             elif interaction == 'done':
                 self.response = Error('Done interaction in progress')
             elif interaction == 'startover':
-                self.response = Error('StartOver interaction in progress')
+                self.start_over()
             elif interaction == 'back':
                 self.response = Error('Back interaction in progress')
             else:
@@ -228,6 +228,24 @@ class Interaction:
                 questions = SolrQuery().query() # fetch default questions
                 Transformer.convert_answers_to_proper_format(questions)
                 self.response.set_questions(questions)
+
+    def start_over(self):
+        """
+        Resets the current session and starts a new one
+        :return:
+        """
+        # collection = InteractionLog.get_collection()
+        #
+        # log = InteractionLog.get_interaction(self.user.visitor_id, collection)
+        # # log.push('asd', 'Hello', collection)
+        # last_interaction = log.pop(collection)
+
+        session_info = VisitorSessionInfo(visitor=self.user, submitted_question=Question.get_submissions_for(self.user.visitor_id), final_text='Hello world!!!')
+
+        session_info.save(True)
+
+        # self.user.reset_session()
+        # self.default_interaction()
 
     def __get_name_value_from_string(self, variable = ''):
         """

@@ -39,7 +39,7 @@ class SlapConfig:
         # SOLR supports two type of query one standard query other filter query
         # Filter Query don't affect the score
         # Add the filter query params if
-        filter_query_params = [ 'language_s', 'BusinessModel_ss', 'Goal_ss', 'Motivation_ss', 'RewardType_ss' ]
+        filter_query_params = ['language_s', 'BusinessModel_ss', 'Goal_ss', 'Motivation_ss', 'RewardType_ss']
 
         # equivalent params stores the params that must be treated as the same
         # for instance business model, reward type and goal all 'Facet' types
