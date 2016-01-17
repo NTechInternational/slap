@@ -5,36 +5,46 @@ from api.core import Interaction
 from api.threescale import ThreeScale
 
 
-def get_visitor_id(request):
-    """
-    returns the visitor for a given user id. if invalid user id is provided
-    with the appropriate error message
-    """
-    visitor_response = 'Unitialized'
-    user_id = request.GET.get('userid', '')
-    if not user_id.strip():
-        #throw an error
-        visitor_response = models.Error('Please provide a valid user id').to_json()
-    else:
-        visitor = models.Visitor.get_by_user_id(user_id)
-        if not visitor:
-            visitor = models.Visitor.create(user_id)
-            visitor.save()
+class SlapView:
+    USER_ID_PARAM_KEY = 'userid'
 
-        visitor_response = visitor.to_json()
+    def __init__(self):
+        self.json_data = {}
 
-    return JsonResponse(visitor_response)
+    def _format_response(self, response):
+        self.json_data = response
+        return JsonResponse(response)
 
-def process_request(request):
-    """
-    processes the visitors interaction request
-    """
-    #determine the type of interaction
-    interaction = Interaction(request, auth_provider = ThreeScale())
+    def get_visitor_id(self, request):
+        """
+        returns the visitor for a given user id. if invalid user id is provided
+        with the appropriate error message
+        """
 
-    if interaction.authenticate():
-        if interaction.ensure_user_is_valid():
-            #perform valid interaction
-            interaction.route()
+        user_id = request.GET.get(self.USER_ID_PARAM_KEY, '')
+        if not user_id.strip():
+            # throw an error
+            visitor_response = models.Error('Please provide a valid user id').to_json()
+        else:
+            visitor = models.Visitor.get_by_user_id(user_id)
+            if not visitor:
+                visitor = models.Visitor.create(user_id)
+                visitor.save()
 
-    return JsonResponse(interaction.response_to_json())
+            visitor_response = visitor.to_json()
+
+        return self._format_response(visitor_response)
+
+    def process_request(self, request):
+        """
+        processes the visitors interaction request
+        """
+        # determine the type of interaction
+        interaction = Interaction(request, auth_provider = ThreeScale())
+
+        if interaction.authenticate():
+            if interaction.ensure_user_is_valid():
+                # perform valid interaction
+                interaction.route()
+
+        return self._format_response(interaction.response_to_json())

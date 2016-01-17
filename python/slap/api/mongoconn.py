@@ -22,14 +22,13 @@ class MongoConnection:
         except Exception as e:
             raise e
 
-    def get_collection(self, collection_name):
+    def get_collection(self, collection_name, create_if_not_found = True):
         """
         Returns the collection specified by the collection_name, if the
         collection doesn't already exist a collection is created
-        Parameters:
-        ----------
-        collection_name : str
-                the name of the mongodb collection to get
+
+        :param collection_name: the name of the mongodb collection to get
+        :param create_if_not_found: if set to true creates a new collection if one is not found.
         """
         db = self.get_db()
         collection_exists = False
@@ -43,9 +42,12 @@ class MongoConnection:
         if collection_exists == True:
             return db[collection_name]
         else:
-            #create a collection and set the indices
-            logging.info('Creating the collection \'%s\'for first time' % collection_name)
-            return self.__setup_indices(db[collection_name], collection_name)
+            if create_if_not_found:
+                #create a collection and set the indices
+                logging.info('Creating the collection \'%s\'for first time' % collection_name)
+                return self.__setup_indices(db[collection_name], collection_name)
+
+        return None
 
 
 
