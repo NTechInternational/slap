@@ -1,19 +1,31 @@
 from django.shortcuts import render
-from django.http import JsonResponse
+from django.http import HttpResponse
 from api import models
 from api.core import Interaction
 from api.threescale import ThreeScale
-
+import json as simplejson
 
 class SlapView:
     USER_ID_PARAM_KEY = 'userid'
+    CALLBACK_PARAM_KEY = 'callback'
 
     def __init__(self):
         self.json_data = {}
 
-    def _format_response(self, response):
+    def _format_response(self, response, request):
+
         self.json_data = response
-        return JsonResponse(response)
+
+        try:
+            data = simplejson.dumps(response)
+            if 'callback' in request.REQUEST:
+                # a jsonp response!
+                data = '%s(%s);' % (request.REQUEST['callback'], data)
+                return HttpResponse(data, "text/javascript")
+        except:
+            data = simplejson.dumps(str(response))
+
+        return HttpResponse(data, "application/json")
 
     def get_visitor_id(self, request):
         """
@@ -33,7 +45,7 @@ class SlapView:
 
             visitor_response = visitor.to_json()
 
-        return self._format_response(visitor_response)
+        return self._format_response(visitor_response, request)
 
     def process_request(self, request):
         """
@@ -47,4 +59,4 @@ class SlapView:
                 # perform valid interaction
                 interaction.route()
 
-        return self._format_response(interaction.response_to_json())
+        return self._format_response(interaction.response_to_json(), request)
